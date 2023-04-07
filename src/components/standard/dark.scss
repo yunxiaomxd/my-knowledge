@@ -1,0 +1,8 @@
+@import './base.scss';
+
+:root[theme='dark'] {
+  --menu-item-text-color: #{$gray-5};
+  --menu-item-bg: #{$gray-13};
+  --menu-item-hover-bg: #{$gray-13};
+  --menu-item-text-hover-color: #{$gray-1};
+}

@@ -1,0 +1,10 @@
+.globalDropdown {
+  position: fixed;
+  width: 100px;
+  height: 100px;
+  background-color: #29e;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%);
+  z-index: 11;
+}

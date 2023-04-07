@@ -1,0 +1,1 @@
+export { default as UseClickAnyway } from './useClickAnyway';
