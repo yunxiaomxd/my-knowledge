@@ -57,5 +57,5 @@ export default function torus() {
 
   }
 
-  return { positions, indices };
+  return { positions, indices, primitiveType: 'TRIANGLES' };
 }
