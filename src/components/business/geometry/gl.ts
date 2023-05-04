@@ -33,6 +33,26 @@ export function init(ref: React.RefObject<HTMLCanvasElement>) {
   return { canvas, gl };
 }
 
+function subtractVectors(a: number[], b: number[]) {
+  return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+}
+
+function normalize(v: number[]) {
+  var length = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+  // make sure we don't divide by 0.
+  if (length > 0.00001) {
+    return [v[0] / length, v[1] / length, v[2] / length];
+  } else {
+    return [0, 0, 0];
+  }
+}
+
+function cross(a: number[], b: number[]) {
+  return [a[1] * b[2] - a[2] * b[1],
+          a[2] * b[0] - a[0] * b[2],
+          a[0] * b[1] - a[1] * b[0]];
+}
+
 export const m4 = {
 
   identify: function() {
@@ -41,6 +61,35 @@ export const m4 = {
       0,  1,  0,  0,
       0,  0,  1,  0,
       0,  0,  0, 1,
+    ];
+  },
+
+  lookAt: function(cameraPosition: any[], target: any, up: any) {
+    var zAxis = normalize(
+        subtractVectors(cameraPosition, target));
+    var xAxis = normalize(cross(up, zAxis));
+    var yAxis = normalize(cross(zAxis, xAxis));
+
+    return [
+       xAxis[0], xAxis[1], xAxis[2], 0,
+       yAxis[0], yAxis[1], yAxis[2], 0,
+       zAxis[0], zAxis[1], zAxis[2], 0,
+       cameraPosition[0],
+       cameraPosition[1],
+       cameraPosition[2],
+       1,
+    ];
+  },
+
+  perspective: function(fieldOfViewInRadians: number, aspect: number, near: number, far: number) {
+    var f = Math.tan(Math.PI * 0.5 - 0.5 * fieldOfViewInRadians);
+    var rangeInv = 1.0 / (near - far);
+
+    return [
+      f / aspect, 0, 0, 0,
+      0, f, 0, 0,
+      0, 0, (near + far) * rangeInv, -1,
+      0, 0, near * far * rangeInv * 2, 0
     ];
   },
 
@@ -54,7 +103,7 @@ export const m4 = {
     ];
   },
 
-  multiply: function(a: number[], b: number[]) {
+  multiply: function(a: any[], b: any[]) {
     var a00 = a[0 * 4 + 0];
     var a01 = a[0 * 4 + 1];
     var a02 = a[0 * 4 + 2];
@@ -107,7 +156,7 @@ export const m4 = {
     ];
   },
 
-  translation: function(tx: number, ty: number, tz: number) {
+  translation: function(tx: any, ty: any, tz: any) {
     return [
        1,  0,  0,  0,
        0,  1,  0,  0,
@@ -152,7 +201,7 @@ export const m4 = {
     ];
   },
 
-  scaling: function(sx: number, sy: number, sz: number) {
+  scaling: function(sx: any, sy: any, sz: any) {
     return [
       sx, 0,  0,  0,
       0, sy,  0,  0,
@@ -161,26 +210,25 @@ export const m4 = {
     ];
   },
 
-  translate: function(m: number[], tx: number, ty: number, tz: number) {
+  translate: function(m: any, tx: any, ty: any, tz: any) {
     return m4.multiply(m, m4.translation(tx, ty, tz));
   },
 
-  xRotate: function(m: number[], angleInRadians: number) {
+  xRotate: function(m: any, angleInRadians: any) {
     return m4.multiply(m, m4.xRotation(angleInRadians));
   },
 
-  yRotate: function(m: number[], angleInRadians: number) {
+  yRotate: function(m: any, angleInRadians: any) {
     return m4.multiply(m, m4.yRotation(angleInRadians));
   },
 
-  zRotate: function(m: number[], angleInRadians: number) {
+  zRotate: function(m: any, angleInRadians: any) {
     return m4.multiply(m, m4.zRotation(angleInRadians));
   },
 
-  scale: function(m: number[], sx: number, sy: number, sz: number) {
+  scale: function(m: any, sx: any, sy: any, sz: any) {
     return m4.multiply(m, m4.scaling(sx, sy, sz));
   },
-
 };
 
 export function degToRad(d: number) {

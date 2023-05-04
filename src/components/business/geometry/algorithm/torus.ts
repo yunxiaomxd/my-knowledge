@@ -1,5 +1,5 @@
 export default function torus() {
-  const radius = 0.5, tube = 0.2, radialSegments = 24, tubularSegments = 48, arc = Math.PI * 2;
+  const radius = 100, tube = 40, radialSegments = 24, tubularSegments = 48, arc = Math.PI * 2;
 
   const positions: number[] = [], indices: number[] = [];
 
@@ -14,7 +14,7 @@ export default function torus() {
 
       const x = ( radius + tube * Math.cos( v ) ) * Math.cos( u );
       const y = ( radius + tube * Math.cos( v ) ) * Math.sin( u );
-      const z = tube * Math.sin( v );
+      const z = tube * Math.sin( v ) - 1000;
 
       positions.push( x, y, z );
 

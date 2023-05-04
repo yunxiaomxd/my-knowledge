@@ -15,6 +15,6 @@ export const fragment = `precision mediump float;
 varying vec4 v_fragCoord;
 
 void main() {
-	gl_FragColor = v_fragCoord;	
+	gl_FragColor = vec4(0.3, 0.9, 0.45, 1.);	
 }
 `;

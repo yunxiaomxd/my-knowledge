@@ -8,17 +8,17 @@ const reduce = (t: number, ...ps: number[]): number[] => {
   return [lerp(t, p1, p2)];
 }
 
-// Example: deCasteljau(0.5, [0.0, 1.0, 2.0, 3.0]) == 1.5
 const deCasteljau = (t: number, ps: number[]): number => ps.length > 1
     ? deCasteljau(t, reduce(t, ...ps))
     : ps[0];
 
 export default function bezierCurve() {
   const total = 48;
-  const p0 = [-0.7, -0.5, 0];
-  const p1 = [-0.3, 0.5, 0];
-  const p2 = [0.3, 0.5, 0];
-  const p3 = [0.7, -0.5, 0];
+  const z = -1000;
+  const p0 = [-70, -50, z];
+  const p1 = [-30, 50, z];
+  const p2 = [30, 50, z];
+  const p3 = [70, -50, z];
 
   const positions: number[] = [];
   for (let i = 0; i <= total; i++) {
