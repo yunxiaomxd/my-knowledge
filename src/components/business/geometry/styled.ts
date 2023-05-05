@@ -23,3 +23,18 @@ export const MenuItem = styled.div`
     background-color: rgba(34, 153, 238, 1);
   }
 `;
+
+export const Panel = styled.div`
+  padding: 4px 6px;
+  border-radius: 4px;
+  box-shadow: 0 0 5px #d3d0d0;
+`;
+
+export const PanelTitle = styled.div`
+  border-bottom: 1px solid #ebebeb;
+  padding: 6px 0;
+`;
+
+export const PanelContent = styled.div`
+  padding: 6px 0;
+`;

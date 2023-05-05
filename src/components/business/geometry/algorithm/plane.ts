@@ -26,10 +26,6 @@ export default function plane(width: number, height: number, widthSegments = 1, 
 
       const x = ix * segment_width - width_half;
 
-      // positions.push( x, 0, - y );
-
-      // normals.push( 0, 1, 0 );
-
       positions.push(x, 0, -y);
 
       normals.push(0, 1, 0);

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { init, createShader, createProgram, m4, degToRad } from "./gl";
 import { vertex, fragment } from "./shader";
-import { Container, Content, Menu, MenuItem } from "./styled";
+import { Container, Content, Menu, MenuItem, Panel, PanelContent, PanelTitle } from "./styled";
 import { torus, bezierCurve, lineNoise, surfaceNoise, plane } from "./algorithm";
 
 enum EGeometry {
@@ -11,6 +11,8 @@ enum EGeometry {
   SurfaceNoise,
   Plane
 }
+
+type TMaterialField = 'ambient' | 'diffuse' | 'specular' | 'shininess';
 
 const worldWidth = 256, worldDepth = 256;
 const geometryMap = {
@@ -23,10 +25,10 @@ const geometryMap = {
 
 interface IRenderGeometry { positionBuffer: WebGLBuffer, indexBuffer?: WebGLBuffer, primitiveType: string; positionCount: number; indexCount?: number; };
 
-interface IGeometry { positions: number[]; indices: number[], primitiveType: string };
+interface IGeometry { positions: number[]; indices: number[], normals?: number[], primitiveType: string };
 
 const defaultZ = -1;
-const targetZ = -1000
+const targetZ = -1000;
 
 class AnimateGL {
   ref: React.RefObject<HTMLCanvasElement> | null = null;
@@ -46,6 +48,17 @@ class AnimateGL {
   position: number[] = [0, 0, defaultZ];
   target: number[] = [0, 0, targetZ];
   up = [0, 1, 0];
+
+  material = {
+    ambient: [1.0, 0.5, 0.31],
+    diffuse: [1.0, 0.5, 0.31],
+    specular: [0.5, 0.5, 0.5],
+    shininess: 32,
+  }
+
+  light = {
+    color: [1.0, 1.0, 1.0],
+  }
 
   timer = 0;
 
@@ -93,24 +106,48 @@ class AnimateGL {
     const { list, gl, program } = this;
     if (!gl || !program || !geometry) return;
 
+    const { positions, indices, primitiveType, normals } = geometry;
+
     const positionBuffer = gl.createBuffer() as WebGLBuffer;
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(geometry.positions), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
-    list.push({ positionBuffer, primitiveType: geometry.primitiveType, positionCount: geometry.positions.length / 3 });
-    if (geometry.indices.length > 0) {
+    list.push({ positionBuffer, primitiveType: primitiveType, positionCount: positions.length / 3 });
+    if (indices.length > 0) {
       const indexBuffer = gl.createBuffer() as WebGLBuffer;
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(geometry.indices), gl.STATIC_DRAW);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
 
       list[list.length - 1].indexBuffer = indexBuffer;
-      list[list.length - 1].indexCount = geometry.indices.length;
+      list[list.length - 1].indexCount = indices.length;
+    }
+
+    if (normals) {
+      const normalBuffer = gl.createBuffer() as WebGLBuffer;
+      gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
     }
   }
 
   render = () => {
-    const { list, gl, program, positionLocation } = this;
+    const { list, gl, program, positionLocation, material, light } = this;
     if (!gl || !program) return;
+
+    const ambientLocation = gl.getUniformLocation(program, 'material.ambient');
+    const diffuseLocation = gl.getUniformLocation(program, 'material.diffuse');
+    const specularLocation = gl.getUniformLocation(program, 'material.specular');
+    const shininessLocation = gl.getUniformLocation(program, 'material.shininess');
+
+    gl.uniform3fv(ambientLocation, new Float32Array(material.ambient));
+    gl.uniform3fv(diffuseLocation, new Float32Array(material.diffuse));
+    gl.uniform3fv(specularLocation, new Float32Array(material.specular));
+    gl.uniform1f(shininessLocation, material.shininess);
+
+    const lightLocation = gl.getUniformLocation(program, 'u_lightColor');
+    gl.uniform3fv(lightLocation, new Float32Array(light.color));
+
+    const eyeLocation = gl.getUniformLocation(program, 'u_eye');
+    gl.uniform3fv(eyeLocation, new Float32Array(this.position));
 
     const mvpLocation = gl.getUniformLocation(program, "u_mvp");
 
@@ -118,7 +155,7 @@ class AnimateGL {
     const zNear = 1;
     const zFar = 2000;
 
-    var fieldOfViewRadians = degToRad(60);
+    var fieldOfViewRadians = degToRad(30);
 
     const projectionMatrix = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
     const cameraMatrix = m4.lookAt(this.position, this.target, this.up);
@@ -169,10 +206,28 @@ const Geometry = () => {
     instance?.render();
   }, [instance]);
 
+  const handleChangeMaterial = (type: TMaterialField, index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = +e.target.value;
+    if (type === 'shininess') {
+      instance!.material.shininess = value;
+    } else {
+      instance!.material[type][index] = value;
+    }
+    instance?.render();
+  }
+
+  const handleChangeLight = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = +e.target.value;
+    instance!.light.color[index] = value;
+    instance?.render();
+  }
+
   useEffect(() => {
     if (ref.current) {
       const animateGL = new AnimateGL(ref);
       setInstance(animateGL);
+      animateGL.add(geometryMap[EGeometry.Torus]);
+      animateGL.render();
     }
   }, [ref]);
 
@@ -191,20 +246,60 @@ const Geometry = () => {
           &nbsp;&nbsp;
           <MenuItem onClick={() => toggleGeometry(EGeometry.Plane)}>网格平面</MenuItem>
         </Menu>
-        <input type="range" min={-2000} max={2000} onChange={(e) => {
-          instance!.position[0] = +e.target.value;
-          instance?.render();
-        }} />
-        <input type="range" min={-2000} max={2000} onChange={(e) => {
-          instance!.position[1] = +e.target.value;
-          instance?.render();
-        }} />
-        <input defaultValue={defaultZ} type="range" min={-2000} max={0} onChange={(e) => {
-          instance!.position[2] = +e.target.value;
-          instance?.render();
-        }} />
-        <br />
-        <canvas width={640} height={480} ref={ref} />
+        <div style={{ display: 'flex' }}>
+          <canvas width={640} height={480} ref={ref} />
+          <div>
+            <Panel>
+              <PanelTitle>相机位置</PanelTitle>
+              <PanelContent>
+                x: <input type="range" min={-2000} max={2000} onChange={(e) => {
+                  instance!.position[0] = +e.target.value;
+                  instance?.render();
+                }} />
+                <br />
+                y: <input type="range" min={-2000} max={2000} onChange={(e) => {
+                  instance!.position[1] = +e.target.value;
+                  instance?.render();
+                }} />
+                <br />
+                z: <input defaultValue={defaultZ} type="range" min={-2000} max={0} onChange={(e) => {
+                  instance!.position[2] = +e.target.value;
+                  instance?.render();
+                }} />
+              </PanelContent>
+            </Panel>
+            <Panel>
+              <PanelTitle>材质</PanelTitle>
+              <PanelContent>
+                {
+                  ['ambient', 'diffuse', 'specular'].map((v) => {
+                    const arr = instance?.material[v as TMaterialField] as number[] || [];
+                    return (
+                      <div key={v}>
+                        {v}:
+                        <br />
+                        <input type="range" min={0} max={1} step={0.01} defaultValue={arr[0]} onChange={(e) => handleChangeMaterial(v as TMaterialField, 0, e)} />
+                        <input type="range" min={0} max={1} step={0.01} defaultValue={arr[1]} onChange={(e) => handleChangeMaterial(v as TMaterialField, 1, e)} />
+                        <input type="range" min={0} max={1} step={0.01} defaultValue={arr[2]} onChange={(e) => handleChangeMaterial(v as TMaterialField, 2, e)} />
+                        <br />
+                      </div>
+                    )
+                  })
+                }
+                shininess: <br />
+                <input type="text" defaultValue={instance?.material.shininess} onBlur={(e) => handleChangeMaterial('shininess', -1, e)} />
+              </PanelContent>
+            </Panel>
+            <Panel>
+              <PanelTitle>灯光</PanelTitle>
+              <PanelContent>
+                <input type="range" min={0} max={1} step={0.01} defaultValue={instance?.light.color[0]} onChange={(e) => handleChangeLight(0, e)} />
+                <input type="range" min={0} max={1} step={0.01} defaultValue={instance?.light.color[1]} onChange={(e) => handleChangeLight(1, e)} />
+                <input type="range" min={0} max={1} step={0.01} defaultValue={instance?.light.color[2]} onChange={(e) => handleChangeLight(2, e)} />
+              </PanelContent>
+            </Panel>
+          </div>
+        </div>
       </Content>
     </Container>
   );

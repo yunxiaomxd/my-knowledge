@@ -1,7 +1,9 @@
+import { subtractVectors, normalize } from '../gl';
+
 export default function torus() {
   const radius = 100, tube = 40, radialSegments = 24, tubularSegments = 48, arc = Math.PI * 2;
 
-  const positions: number[] = [], indices: number[] = [];
+  const positions: number[] = [], indices: number[] = [], normals: number[] = [];
 
   for ( let j = 0; j <= radialSegments; j ++ ) {
 
@@ -20,11 +22,11 @@ export default function torus() {
 
       // normal
 
-      // center.x = radius * Math.cos( u );
-      // center.y = radius * Math.sin( u );
-      // normal.subVectors( vertex, center ).normalize();
+      const normalX = radius * Math.cos( u );
+      const normalY = radius * Math.sin( u );
+      const normal = normalize(subtractVectors([x, y, z], [normalX, normalY, 0]));
 
-      // normals.push( normal.x, normal.y, normal.z );
+      normals.push( ...normal );
 
       // uv
 
@@ -57,5 +59,5 @@ export default function torus() {
 
   }
 
-  return { positions, indices, primitiveType: 'TRIANGLES' };
+  return { positions, indices, normals, primitiveType: 'TRIANGLES' };
 }
