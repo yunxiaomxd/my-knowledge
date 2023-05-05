@@ -31,14 +31,6 @@ uniform Material material;
 varying vec4 v_fragCoord;
 varying vec3 v_normals;
 
-float pow(float a) {
-  float res = a;
-  for (int i = 1; i < 32; ++i) {
-    res = res * res;
-  }
-  return res;
-}
-
 void main() {
 
   vec3 objectColor = vec3(1.0, 0.5, 0.31);
@@ -54,7 +46,8 @@ void main() {
 
   vec3 viewDir = normalize(u_eye - FragPos);
   vec3 reflectDir = reflect(-lightDir, normal);
-  float spec = pow(max(dot(viewDir, reflectDir), 0.0));
+  float maxDir = max(dot(viewDir, reflectDir), .0);
+  float spec = pow(maxDir, material.shininess);
   vec3 specular = u_lightColor * (spec * material.specular);
 
   vec3 result = (ambient + diffuse + specular) * objectColor;
