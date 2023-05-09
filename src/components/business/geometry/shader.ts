@@ -38,7 +38,7 @@ void main() {
   vec3 ambient = material.ambient * u_lightColor;
 
   vec3 FragPos = vec3(v_fragCoord);
-  vec3 lightPos = vec3(.0, 1.0, .0);
+  vec3 lightPos = vec3(1.2, 1.0, -2.0);
   vec3 normal = normalize(v_normals);
   vec3 lightDir = normalize(lightPos - FragPos);
   float diff = max(dot(normal, lightDir), 0.0);
@@ -46,7 +46,8 @@ void main() {
 
   vec3 viewDir = normalize(u_eye - FragPos);
   vec3 reflectDir = reflect(-lightDir, normal);
-  float maxDir = max(dot(viewDir, reflectDir), .0);
+  vec3 halfwayDir = normalize(lightDir + viewDir);
+  float maxDir = max(dot(normal, halfwayDir), .0);
   float spec = pow(maxDir, material.shininess);
   vec3 specular = u_lightColor * (spec * material.specular);
 

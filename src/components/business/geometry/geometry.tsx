@@ -2,14 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { init, createShader, createProgram, m4, degToRad } from "./gl";
 import { vertex, fragment } from "./shader";
 import { Container, Content, Menu, MenuItem, Panel, PanelContent, PanelTitle } from "./styled";
-import { torus, bezierCurve, lineNoise, surfaceNoise, plane } from "./algorithm";
+import { torus, bezierCurve, lineNoise, surfaceNoise, cubic, plane } from "./algorithm";
 
 enum EGeometry {
   Torus,
   BezierCurves,
   LineNoise,
   SurfaceNoise,
-  Plane
+  Plane,
+  Cubic
 }
 
 type TMaterialField = 'ambient' | 'diffuse' | 'specular' | 'shininess';
@@ -21,11 +22,12 @@ const geometryMap = {
   [EGeometry.LineNoise]: lineNoise(),
   // [EGeometry.SurfaceNoise]: surfaceNoise(),
   [EGeometry.Plane]: plane(7500, 7500, worldWidth - 1, worldDepth - 1),
+  [EGeometry.Cubic]: cubic(300, 300, 300, [0, 0, -1000]),
 }
 
-interface IRenderGeometry { positionBuffer: WebGLBuffer, indexBuffer?: WebGLBuffer, primitiveType: string; positionCount: number; indexCount?: number; };
+interface IRenderGeometry { positionBuffer: WebGLBuffer; normalBuffer?: WebGLBuffer; indexBuffer?: WebGLBuffer; primitiveType: string; positionCount: number; indexCount?: number; };
 
-interface IGeometry { positions: number[]; indices: number[], normals?: number[], primitiveType: string };
+interface IGeometry { positions: number[]; indices: number[]; normals?: number[]; primitiveType: string };
 
 const defaultZ = -1;
 const targetZ = -1000;
@@ -36,6 +38,7 @@ class AnimateGL {
   gl: WebGLRenderingContext | null = null;
   program: WebGLProgram | null = null;
   positionLocation: number = 0;
+  normalLocation: number = 0;
   renderList = [];
 
   rotate = {
@@ -44,7 +47,6 @@ class AnimateGL {
     z: 0,
   };
 
-  
   position: number[] = [0, 0, defaultZ];
   target: number[] = [0, 0, targetZ];
   up = [0, 1, 0];
@@ -72,11 +74,6 @@ class AnimateGL {
     if (!ref) return;
     const { gl } = init(ref);
 
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.clearColor(0, 0, 0, 0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.enable(gl.CULL_FACE);
-
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertex) as WebGLShader;
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragment) as WebGLShader;
 
@@ -84,10 +81,12 @@ class AnimateGL {
     gl.useProgram(program);
 
     const positionLocation = gl.getAttribLocation(program, 'a_position');
+    const normalLocation = gl.getAttribLocation(program, 'a_normals');
 
     this.gl = gl;
     this.program = program;
     this.positionLocation = positionLocation;
+    this.normalLocation = normalLocation;
   }
 
   setRotateX = (value: number) => {
@@ -126,17 +125,27 @@ class AnimateGL {
       const normalBuffer = gl.createBuffer() as WebGLBuffer;
       gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+      list[list.length - 1].normalBuffer = normalBuffer;
     }
   }
 
   render = () => {
-    const { list, gl, program, positionLocation, material, light } = this;
+    const { list, gl, program, positionLocation, normalLocation, material, light, rotate } = this;
     if (!gl || !program) return;
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.enable(gl.CULL_FACE);
 
     const ambientLocation = gl.getUniformLocation(program, 'material.ambient');
     const diffuseLocation = gl.getUniformLocation(program, 'material.diffuse');
     const specularLocation = gl.getUniformLocation(program, 'material.specular');
     const shininessLocation = gl.getUniformLocation(program, 'material.shininess');
+
+    // console.log(`material.ambient: ${material.ambient}`);
+    // console.log(`material.diffuse: ${material.diffuse}`);
+    // console.log(`material.specular: ${material.specular}`);
+    // console.log(`material.shininess: ${material.shininess}`);
 
     gl.uniform3fv(ambientLocation, new Float32Array(material.ambient));
     gl.uniform3fv(diffuseLocation, new Float32Array(material.diffuse));
@@ -157,9 +166,16 @@ class AnimateGL {
 
     var fieldOfViewRadians = degToRad(30);
 
+    let modelMatrix = m4.identify();
+    modelMatrix = m4.xRotate(modelMatrix, degToRad(rotate.x));
+    modelMatrix = m4.yRotate(modelMatrix, degToRad(rotate.y));
+    modelMatrix = m4.zRotate(modelMatrix, degToRad(rotate.z));
+
     const projectionMatrix = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
     const cameraMatrix = m4.lookAt(this.position, this.target, this.up);
-    const matrix = m4.multiply(projectionMatrix, cameraMatrix);
+   
+    let matrix = m4.multiply(projectionMatrix, cameraMatrix);
+    matrix = m4.multiply(matrix, modelMatrix);
 
     const renderAnimate = () => {
 
@@ -170,6 +186,14 @@ class AnimateGL {
       const normalize = false;
       const stride = 0;
       const offset = 0;
+
+      gl.enableVertexAttribArray(normalLocation);
+      for (let i = 0; i < list.length; i++) {
+        const { normalBuffer } = list[i];
+        gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer as WebGLBuffer);
+        gl.vertexAttribPointer(normalLocation, size, type, normalize, stride, offset);
+      }
+
 
       gl.enableVertexAttribArray(positionLocation);
 
@@ -226,7 +250,7 @@ const Geometry = () => {
     if (ref.current) {
       const animateGL = new AnimateGL(ref);
       setInstance(animateGL);
-      animateGL.add(geometryMap[EGeometry.Torus]);
+      animateGL.add(geometryMap[EGeometry.Cubic]);
       animateGL.render();
     }
   }, [ref]);
@@ -245,14 +269,35 @@ const Geometry = () => {
           <MenuItem onClick={() => toggleGeometry(EGeometry.SurfaceNoise)}>模拟地形</MenuItem>
           &nbsp;&nbsp;
           <MenuItem onClick={() => toggleGeometry(EGeometry.Plane)}>网格平面</MenuItem>
+          &nbsp;&nbsp;
+          <MenuItem onClick={() => toggleGeometry(EGeometry.Cubic)}>正方体</MenuItem>
         </Menu>
         <div style={{ display: 'flex' }}>
           <canvas width={640} height={480} ref={ref} />
-          <div>
+          {instance && <div>
+            <Panel>
+              <PanelTitle>旋转</PanelTitle>
+              <PanelContent>
+                x: <input defaultValue={0} type="range" min={0} max={360} onChange={(e) => {
+                  instance!.setRotateX(+e.target.value)
+                  instance?.render();
+                }} />
+                <br />
+                y: <input defaultValue={0} type="range" min={0} max={360} onChange={(e) => {
+                  instance!.setRotateY(+e.target.value)
+                  instance?.render();
+                }} />
+                <br />
+                z: <input defaultValue={0} type="range" min={0} max={360} onChange={(e) => {
+                  instance!.setRotateZ(+e.target.value)
+                  instance?.render();
+                }} />
+              </PanelContent>
+            </Panel>
             <Panel>
               <PanelTitle>相机位置</PanelTitle>
               <PanelContent>
-                x: <input type="range" min={-2000} max={2000} onChange={(e) => {
+                x: <input  type="range" min={-2000} max={2000} onChange={(e) => {
                   instance!.position[0] = +e.target.value;
                   instance?.render();
                 }} />
@@ -298,7 +343,7 @@ const Geometry = () => {
                 <input type="range" min={0} max={1} step={0.01} defaultValue={instance?.light.color[2]} onChange={(e) => handleChangeLight(2, e)} />
               </PanelContent>
             </Panel>
-          </div>
+          </div>}
         </div>
       </Content>
     </Container>
