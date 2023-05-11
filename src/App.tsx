@@ -2,9 +2,10 @@ import { memo, useEffect, useState } from "react";
 import { hooksList, performanceList, BusinessList, Menu, IMenuItem } from "./components";
 
 const list = [hooksList, performanceList, BusinessList];
+const defaultKey = BusinessList.children![2].value
 
 function App() {
-  const [key, setKey] = useState((BusinessList.children as IMenuItem[])[1].value);
+  const [key, setKey] = useState(defaultKey);
 
   useEffect(() => {
     document.documentElement.setAttribute('theme', 'light');

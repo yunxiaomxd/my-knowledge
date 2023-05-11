@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { init, createShader, createProgram, m4, degToRad } from "./gl";
+import vertex from "./shader/pbr/vertex.glsl?raw";
+import fragment from "./shader/pbr/fragment.glsl?raw";
 import { Container, Content, Menu, MenuItem, Panel, PanelContent, PanelTitle } from "./styled";
 import { torus, bezierCurve, lineNoise, surfaceNoise, cubic, plane } from "./algorithm";
-import vertex from './shader/blinnPhong/vertex.glsl?raw';
-import fragment from './shader/blinnPhong/fragment.glsl?raw';
 
 enum EGeometry {
   Torus,
@@ -14,7 +14,8 @@ enum EGeometry {
   Cubic
 }
 
-type TMaterialField = 'ambient' | 'diffuse' | 'specular' | 'shininess';
+type TMaterialNumberField = 'metallic' | 'roughness' | 'ao';
+type TMaterialField = 'albedo' | TMaterialNumberField;
 
 const worldWidth = 256, worldDepth = 256;
 const geometryMap = {
@@ -53,14 +54,18 @@ class AnimateGL {
   up = [0, 1, 0];
 
   material = {
-    ambient: [1.0, 0.5, 0.31],
-    diffuse: [1.0, 0.5, 0.31],
-    specular: [0.5, 0.5, 0.5],
-    shininess: 32,
+    // 反射率
+    albedo: [1, 1, 1],
+    // 光泽度
+    metallic: 1,
+    // 粗糙度
+    roughness: 1,
+    ao: 1,
   }
 
   light = {
     color: [1.0, 1.0, 1.0],
+    position: [1.2, 1.0, -2.0],
   }
 
   timer = 0;
@@ -138,22 +143,27 @@ class AnimateGL {
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.enable(gl.CULL_FACE);
 
-    const ambientLocation = gl.getUniformLocation(program, 'material.ambient');
-    const diffuseLocation = gl.getUniformLocation(program, 'material.diffuse');
-    const specularLocation = gl.getUniformLocation(program, 'material.specular');
-    const shininessLocation = gl.getUniformLocation(program, 'material.shininess');
-
-    gl.uniform3fv(ambientLocation, new Float32Array(material.ambient));
-    gl.uniform3fv(diffuseLocation, new Float32Array(material.diffuse));
-    gl.uniform3fv(specularLocation, new Float32Array(material.specular));
-    gl.uniform1f(shininessLocation, material.shininess);
-
-    const lightLocation = gl.getUniformLocation(program, 'u_lightColor');
-    gl.uniform3fv(lightLocation, new Float32Array(light.color));
+    const resolutionLocation = gl.getUniformLocation(program, 'u_resolution');
+    gl.uniform2fv(resolutionLocation, new Float32Array([gl.canvas.width, gl.canvas.height]));
 
     const eyeLocation = gl.getUniformLocation(program, 'u_eye');
     gl.uniform3fv(eyeLocation, new Float32Array(this.position));
 
+    const albedoLocation = gl.getUniformLocation(program, 'material.ambient');
+    const metallicLocation = gl.getUniformLocation(program, 'material.diffuse');
+    const roughnessLocation = gl.getUniformLocation(program, 'material.specular');
+    const aoLocation = gl.getUniformLocation(program, 'material.shininess');
+
+    gl.uniform3fv(albedoLocation, new Float32Array(material.albedo));
+    gl.uniform1f(metallicLocation, material.metallic);
+    gl.uniform1f(roughnessLocation, material.roughness);
+    gl.uniform1f(aoLocation, material.ao);
+
+    const lightColorLocation = gl.getUniformLocation(program, 'light.color');
+    const lightPoistionLocation = gl.getUniformLocation(program, 'light.position');
+    gl.uniform3fv(lightColorLocation, new Float32Array(light.color));
+    gl.uniform3fv(lightPoistionLocation, new Float32Array(light.position));
+    
     const mvpLocation = gl.getUniformLocation(program, "u_mvp");
 
     const aspect = gl.canvas.width / gl.canvas.height;
@@ -190,7 +200,6 @@ class AnimateGL {
         gl.vertexAttribPointer(normalLocation, size, type, normalize, stride, offset);
       }
 
-
       gl.enableVertexAttribArray(positionLocation);
 
       for (let i = 0; i < list.length; i++) {
@@ -208,14 +217,13 @@ class AnimateGL {
         }
       }
 
-      // this.timer = requestAnimationFrame(renderAnimate);
     };
 
     renderAnimate();
   }
 }
 
-const Geometry = () => {
+const GeometryPBR = () => {
   const ref = useRef<HTMLCanvasElement>(null);
   const [instance, setInstance] = useState<AnimateGL>();
 
@@ -228,10 +236,10 @@ const Geometry = () => {
 
   const handleChangeMaterial = (type: TMaterialField, index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const value = +e.target.value;
-    if (type === 'shininess') {
-      instance!.material.shininess = value;
+    if (type !== 'albedo') {
+      instance!.material[type] = value;
     } else {
-      instance!.material[type][index] = value;
+      instance!.material.albedo[index] = value;
     }
     instance?.render();
   }
@@ -312,23 +320,23 @@ const Geometry = () => {
             <Panel>
               <PanelTitle>材质</PanelTitle>
               <PanelContent>
+                albedo: <br />
+                <input type="range" min={0} max={1} step={0.01} defaultValue={instance.material.albedo[0]} onChange={(e) => handleChangeMaterial('albedo', 0, e)} />
+                <input type="range" min={0} max={1} step={0.01} defaultValue={instance.material.albedo[1]} onChange={(e) => handleChangeMaterial('albedo', 1, e)} />
+                <input type="range" min={0} max={1} step={0.01} defaultValue={instance.material.albedo[2]} onChange={(e) => handleChangeMaterial('albedo', 2, e)} />
                 {
-                  ['ambient', 'diffuse', 'specular'].map((v) => {
-                    const arr = instance?.material[v as TMaterialField] as number[] || [];
+                  ['metallic', 'roughness', 'ao'].map((v: string) => {
+                    const key = v as TMaterialNumberField;
                     return (
                       <div key={v}>
                         {v}:
                         <br />
-                        <input type="range" min={0} max={1} step={0.01} defaultValue={arr[0]} onChange={(e) => handleChangeMaterial(v as TMaterialField, 0, e)} />
-                        <input type="range" min={0} max={1} step={0.01} defaultValue={arr[1]} onChange={(e) => handleChangeMaterial(v as TMaterialField, 1, e)} />
-                        <input type="range" min={0} max={1} step={0.01} defaultValue={arr[2]} onChange={(e) => handleChangeMaterial(v as TMaterialField, 2, e)} />
+                        <input type="text" defaultValue={instance.material[key]} onBlur={(e) => handleChangeMaterial(key, -1, e)} />
                         <br />
                       </div>
                     )
                   })
                 }
-                shininess: <br />
-                <input type="text" defaultValue={instance?.material.shininess} onBlur={(e) => handleChangeMaterial('shininess', -1, e)} />
               </PanelContent>
             </Panel>
             <Panel>
@@ -346,4 +354,4 @@ const Geometry = () => {
   );
 };
 
-export default Geometry;
+export default GeometryPBR;

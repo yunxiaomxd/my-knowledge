@@ -1,0 +1,1 @@
+export { default as X6V } from './x6v'
