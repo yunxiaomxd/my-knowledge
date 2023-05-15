@@ -50,43 +50,45 @@ vec3 fresnelSchlick (float cosTheta, vec3 F0){
 }
 
 void main (){
-  vec3 totColor = vec3(0.0);
-  
-  vec3 ro = vec3(0.0, 0.0, -2.0);
-
   vec3 N = normalize(v_normals);
   vec3 V = normalize(u_eye - v_fragCoord);
 
-  for (float x = 0.0; x <= 1.0; x += 1.) {
-    for (float y = 0.0; y <= 1.0; y += 1.) {
-      // vec3 rd = normalize(vec3(v_fragCoord.xy + vec2(x, y) / u_resolution.y, 1.2));
-      // float d = sphereIntersect(ro, rd, vec4(0,0,0,1));
-      
-      // if (d > 0.) {
-        vec3 L = normalize (light.position - v_fragCoord);
-        vec3 H = normalize (V + L);
-        
-        // Cook-Torrance BRDF
-        vec3  F0 = mix (vec3 (0.04), pow(material.albedo, vec3 (2.2)), material.metallic);
-        float NDF = distributionGGX(N, H, material.roughness);
-        float G   = geometrySmith(N, V, L, material.roughness);
-        vec3  F   = fresnelSchlick(max(dot(H, V), 0.0), F0);        
-        vec3  kD  = vec3(1.0) - F;
-        kD *= 1.0 - material.metallic;	  
-        
-        vec3  numerator   = NDF * G * F;
-        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
-        vec3  specular    = numerator / max(denominator, 0.001);  
+  vec3 F0 = vec3(0.25); 
+  F0 = mix(F0, material.albedo, material.metallic);
             
-        float NdotL = max(dot(N, L), 0.0);                
-        vec3  color = light.color * (kD * pow(material.albedo, vec3 (2.2)) / PI + specular) * 
-                      (NdotL / dot(light.position - v_fragCoord, light.position - v_fragCoord));
-        
-        totColor += color;
-      // }
-    }
-  }
-    
-  // HDR tonemapping gamma correct
-  gl_FragColor = vec4(pow(totColor/(totColor + 1.0), vec3 (1.0/2.2)), 1.0);
+  // reflectance equation
+  vec3 Lo = vec3(0.0);
+
+  // calculate per-light radiance
+  vec3 L = normalize(light.position - v_fragCoord);
+  vec3 H = normalize(V + L);
+  float distance    = length(light.position - v_fragCoord);
+  float attenuation = 1.0 * (distance * distance);
+  // vec3 radiance     = light.color * attenuation;  
+  vec3 radiance = light.color;      
+  
+  // cook-torrance brdf
+  float NDF = distributionGGX(N, H, material.roughness);        
+  float G   = geometrySmith(N, V, L, material.roughness);      
+  vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);       
+  
+  vec3 kS = F;
+  vec3 kD = vec3(1.0) - kS;
+  kD *= 1.0 - material.metallic;	  
+  
+  vec3 numerator    = NDF * G * F;
+  float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+  vec3 specular     = numerator / denominator;  
+      
+  // add to outgoing radiance Lo
+  float NdotL = max(dot(N, L), 0.0);                
+  Lo += (kD * material.albedo / PI + specular) * radiance * NdotL; 
+
+  vec3 ambient = vec3(0.33) * material.albedo * material.ao;
+  vec3 color = ambient + Lo;
+
+  color = color / (color + vec3(1.0));
+  color = pow(color, vec3(1.0/2.2));  
+  
+  gl_FragColor = vec4(vec3(color), 1.0);
 }

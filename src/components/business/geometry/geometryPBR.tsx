@@ -55,16 +55,16 @@ class AnimateGL {
 
   material = {
     // 反射率
-    albedo: [1, 1, 1],
+    albedo: [0.5, 0, 0],
     // 光泽度
-    metallic: 1,
+    metallic: 0,
     // 粗糙度
-    roughness: 1,
+    roughness: 0.2,
     ao: 1,
   }
 
   light = {
-    color: [1.0, 1.0, 1.0],
+    color: [1.0, 0.5, 1.0],
     position: [1.2, 1.0, -2.0],
   }
 
@@ -149,10 +149,10 @@ class AnimateGL {
     const eyeLocation = gl.getUniformLocation(program, 'u_eye');
     gl.uniform3fv(eyeLocation, new Float32Array(this.position));
 
-    const albedoLocation = gl.getUniformLocation(program, 'material.ambient');
-    const metallicLocation = gl.getUniformLocation(program, 'material.diffuse');
-    const roughnessLocation = gl.getUniformLocation(program, 'material.specular');
-    const aoLocation = gl.getUniformLocation(program, 'material.shininess');
+    const albedoLocation = gl.getUniformLocation(program, 'material.albedo');
+    const metallicLocation = gl.getUniformLocation(program, 'material.metallic');
+    const roughnessLocation = gl.getUniformLocation(program, 'material.roughness');
+    const aoLocation = gl.getUniformLocation(program, 'material.ao');
 
     gl.uniform3fv(albedoLocation, new Float32Array(material.albedo));
     gl.uniform1f(metallicLocation, material.metallic);
@@ -244,9 +244,9 @@ const GeometryPBR = () => {
     instance?.render();
   }
 
-  const handleChangeLight = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChangeLight = (index: number, e: React.ChangeEvent<HTMLInputElement>, type: 'color' | 'position' = 'color') => {
     const value = +e.target.value;
-    instance!.light.color[index] = value;
+    instance!.light[type][index] = value;
     instance?.render();
   }
 
@@ -331,7 +331,7 @@ const GeometryPBR = () => {
                       <div key={v}>
                         {v}:
                         <br />
-                        <input type="text" defaultValue={instance.material[key]} onBlur={(e) => handleChangeMaterial(key, -1, e)} />
+                        <input type="range" min={0} max={1} step={0.01} defaultValue={instance.material[key]} onChange={(e) => handleChangeMaterial(key, -1, e)} />
                         <br />
                       </div>
                     )
@@ -340,11 +340,19 @@ const GeometryPBR = () => {
               </PanelContent>
             </Panel>
             <Panel>
-              <PanelTitle>灯光</PanelTitle>
+              <PanelTitle>灯光颜色</PanelTitle>
               <PanelContent>
-                <input type="range" min={0} max={1} step={0.01} defaultValue={instance?.light.color[0]} onChange={(e) => handleChangeLight(0, e)} />
-                <input type="range" min={0} max={1} step={0.01} defaultValue={instance?.light.color[1]} onChange={(e) => handleChangeLight(1, e)} />
-                <input type="range" min={0} max={1} step={0.01} defaultValue={instance?.light.color[2]} onChange={(e) => handleChangeLight(2, e)} />
+                <input type="range" min={0} max={1000} step={1} defaultValue={instance?.light.color[0]} onChange={(e) => handleChangeLight(0, e)} />
+                <input type="range" min={0} max={1000} step={1} defaultValue={instance?.light.color[1]} onChange={(e) => handleChangeLight(1, e)} />
+                <input type="range" min={0} max={1000} step={1} defaultValue={instance?.light.color[2]} onChange={(e) => handleChangeLight(2, e)} />
+              </PanelContent>
+            </Panel>
+            <Panel>
+              <PanelTitle>灯光位置</PanelTitle>
+              <PanelContent>
+                <input type="range" min={0} max={1000} step={1} defaultValue={instance?.light.position[0]} onChange={(e) => handleChangeLight(0, e, 'position')} />
+                <input type="range" min={0} max={1000} step={1} defaultValue={instance?.light.position[1]} onChange={(e) => handleChangeLight(1, e, 'position')} />
+                <input type="range" min={0} max={1000} step={1} defaultValue={instance?.light.position[2]} onChange={(e) => handleChangeLight(2, e, 'position')} />
               </PanelContent>
             </Panel>
           </div>}

@@ -2,6 +2,7 @@ import { IMenuItem } from '../componentList';
 import { Geometry, GeometryPBR } from './geometry';
 import { Theme } from './theme';
 import { X6V } from './antChart';
+import { SvgEditor } from './svgEditor';
 
 export * from './theme';
 
@@ -27,6 +28,10 @@ export const BusinessList: IMenuItem = {
       label: 'antv-x6',
       value: 'antv-x6',
       component: X6V,
+    }, {
+      label: 'editor',
+      value: 'editor',
+      component: SvgEditor,
     }]
   }]
 }
