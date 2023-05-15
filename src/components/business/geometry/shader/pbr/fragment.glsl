@@ -53,7 +53,7 @@ void main (){
   vec3 N = normalize(v_normals);
   vec3 V = normalize(u_eye - v_fragCoord);
 
-  vec3 F0 = vec3(0.25); 
+  vec3 F0 = vec3(0.04); 
   F0 = mix(F0, material.albedo, material.metallic);
             
   // reflectance equation
@@ -84,7 +84,7 @@ void main (){
   float NdotL = max(dot(N, L), 0.0);                
   Lo += (kD * material.albedo / PI + specular) * radiance * NdotL; 
 
-  vec3 ambient = vec3(0.33) * material.albedo * material.ao;
+  vec3 ambient = vec3(0.03) * material.albedo * material.ao;
   vec3 color = ambient + Lo;
 
   color = color / (color + vec3(1.0));

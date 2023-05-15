@@ -23,6 +23,8 @@ const Menu = (props: IMenu) => {
     if (props.onClick) {
       props.onClick(item);
     }
+
+    setOpen(true);
   }
 
   const handleToggle = useCallback(() => {
