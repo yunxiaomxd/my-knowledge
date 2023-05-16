@@ -65,7 +65,7 @@ class AnimateGL {
 
   light = {
     color: [1.0, 0.5, 1.0],
-    position: [1.2, 1.0, -2.0],
+    position: [1, 1, 0],
   }
 
   timer = 0;
@@ -342,17 +342,17 @@ const GeometryPBR = () => {
             <Panel>
               <PanelTitle>灯光颜色</PanelTitle>
               <PanelContent>
-                <input type="range" min={0} max={1000} step={1} defaultValue={instance?.light.color[0]} onChange={(e) => handleChangeLight(0, e)} />
-                <input type="range" min={0} max={1000} step={1} defaultValue={instance?.light.color[1]} onChange={(e) => handleChangeLight(1, e)} />
-                <input type="range" min={0} max={1000} step={1} defaultValue={instance?.light.color[2]} onChange={(e) => handleChangeLight(2, e)} />
+                <input type="range" min={0} max={1} step={0.01} defaultValue={instance.light.color[0]} onChange={(e) => handleChangeLight(0, e)} />
+                <input type="range" min={0} max={1} step={0.01} defaultValue={instance.light.color[1]} onChange={(e) => handleChangeLight(1, e)} />
+                <input type="range" min={0} max={1} step={0.01} defaultValue={instance.light.color[2]} onChange={(e) => handleChangeLight(2, e)} />
               </PanelContent>
             </Panel>
             <Panel>
               <PanelTitle>灯光位置</PanelTitle>
               <PanelContent>
-                <input type="range" min={0} max={1000} step={1} defaultValue={instance?.light.position[0]} onChange={(e) => handleChangeLight(0, e, 'position')} />
-                <input type="range" min={0} max={1000} step={1} defaultValue={instance?.light.position[1]} onChange={(e) => handleChangeLight(1, e, 'position')} />
-                <input type="range" min={0} max={1000} step={1} defaultValue={instance?.light.position[2]} onChange={(e) => handleChangeLight(2, e, 'position')} />
+                <input type="range" min={0} max={400} step={1} defaultValue={instance?.light.position[0]} onChange={(e) => handleChangeLight(0, e, 'position')} />
+                <input type="range" min={0} max={400} step={1} defaultValue={instance?.light.position[1]} onChange={(e) => handleChangeLight(1, e, 'position')} />
+                <input type="range" min={-2000} max={2000} step={1} defaultValue={instance?.light.position[2]} onChange={(e) => handleChangeLight(2, e, 'position')} />
               </PanelContent>
             </Panel>
           </div>}

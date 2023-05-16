@@ -246,7 +246,7 @@ const Geometry = () => {
     if (ref.current) {
       const animateGL = new AnimateGL(ref);
       setInstance(animateGL);
-      animateGL.add(geometryMap[EGeometry.Cubic]);
+      animateGL.add(geometryMap[EGeometry.Torus]);
       animateGL.render();
     }
   }, [ref]);
