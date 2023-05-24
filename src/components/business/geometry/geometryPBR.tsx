@@ -178,8 +178,9 @@ class AnimateGL {
     modelMatrix = m4.zRotate(modelMatrix, degToRad(rotate.z));
 
     const projectionMatrix = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
-    const cameraMatrix = m4.lookAt(this.position, this.target, this.up);
-   
+    let cameraMatrix = m4.lookAt(this.position, this.target, this.up);
+    cameraMatrix = m4.inverse(cameraMatrix);
+
     let matrix = m4.multiply(projectionMatrix, cameraMatrix);
     matrix = m4.multiply(matrix, modelMatrix);
 
@@ -254,8 +255,8 @@ const GeometryPBR = () => {
     if (ref.current) {
       const animateGL = new AnimateGL(ref);
       setInstance(animateGL);
-      animateGL.add(geometryMap[EGeometry.Cubic]);
-      animateGL.render();
+      // animateGL.add(geometryMap[EGeometry.Torus]);
+      // animateGL.render();
     }
   }, [ref]);
 

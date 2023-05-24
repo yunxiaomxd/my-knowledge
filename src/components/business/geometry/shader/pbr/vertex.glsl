@@ -2,6 +2,7 @@ attribute vec3 a_position;
 attribute vec3 a_normals;
 
 uniform mat4 u_mvp;
+uniform mat4 normalMatrix;
 
 varying vec3 v_fragCoord;
 varying vec3 v_normals;
