@@ -3,3 +3,4 @@ export { default as bezierCurve } from './bezierCurve';
 export { lineNoise, surfaceNoise } from './perlinNoise';
 export { default as plane } from './plane';
 export { default as cubic } from './cubic';
+export { default as sphere } from './sphere';

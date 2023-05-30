@@ -3,7 +3,7 @@ import { init, createShader, createProgram, m4, degToRad } from "./gl";
 import vertex from "./shader/pbr/vertex.glsl?raw";
 import fragment from "./shader/pbr/fragment.glsl?raw";
 import { Container, Content, Menu, MenuItem, Panel, PanelContent, PanelTitle } from "./styled";
-import { torus, bezierCurve, lineNoise, surfaceNoise, cubic, plane } from "./algorithm";
+import { torus, bezierCurve, lineNoise, surfaceNoise, cubic, plane, sphere } from "./algorithm";
 
 enum EGeometry {
   Torus,
@@ -11,7 +11,8 @@ enum EGeometry {
   LineNoise,
   SurfaceNoise,
   Plane,
-  Cubic
+  Cubic,
+  Sphere,
 }
 
 type TMaterialNumberField = 'metallic' | 'roughness' | 'ao';
@@ -25,6 +26,7 @@ const geometryMap = {
   // [EGeometry.SurfaceNoise]: surfaceNoise(),
   [EGeometry.Plane]: plane(7500, 7500, worldWidth - 1, worldDepth - 1),
   [EGeometry.Cubic]: cubic(300, 300, 300, [0, 0, -1000]),
+  [EGeometry.Sphere]: sphere([0, 0, -1000], 32 * 5),
 }
 
 interface IRenderGeometry { positionBuffer: WebGLBuffer; normalBuffer?: WebGLBuffer; indexBuffer?: WebGLBuffer; primitiveType: string; positionCount: number; indexCount?: number; };
@@ -139,7 +141,7 @@ class AnimateGL {
     const { list, gl, program, positionLocation, normalLocation, material, light, rotate } = this;
     if (!gl || !program) return;
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.clearColor(0, 0, 0, 1);
+    gl.clearColor(1, 1, 1, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.enable(gl.CULL_FACE);
 
@@ -230,7 +232,7 @@ const GeometryPBR = () => {
 
   const toggleGeometry = useCallback((type: EGeometry) => {
     let geometry: IGeometry = geometryMap[type];
-    // console.log(geometry);
+    console.log(geometry);
     instance?.add(geometry as IGeometry);
     instance?.render();
   }, [instance]);
@@ -276,6 +278,8 @@ const GeometryPBR = () => {
           <MenuItem onClick={() => toggleGeometry(EGeometry.Plane)}>网格平面</MenuItem>
           &nbsp;&nbsp;
           <MenuItem onClick={() => toggleGeometry(EGeometry.Cubic)}>正方体</MenuItem>
+          &nbsp;&nbsp;
+          <MenuItem onClick={() => toggleGeometry(EGeometry.Sphere)}>球</MenuItem>
         </Menu>
         <div style={{ display: 'flex' }}>
           <canvas width={640} height={480} ref={ref} />
