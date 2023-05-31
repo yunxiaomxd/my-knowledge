@@ -1,3 +1,5 @@
+import { normalize } from "../gl";
+
 export default function sphere(xRadius: number, yRadius: number, zRadius: number, latitudeBands: number, longitudeBands: number, center: number[]) {
   const positions = [];
   const normals = [];
@@ -11,6 +13,18 @@ export default function sphere(xRadius: number, yRadius: number, zRadius: number
     const cosTheta = Math.cos(theta);
 
     for (let lng = 0; lng <= longitudeBands; lng++) {
+      // const xSegment = lat / latitudeBands;
+      // const ySegment = lng / longitudeBands;
+      // const xPos = xRadius * Math.cos(xSegment * 2.0 * Math.PI) * Math.sin(ySegment * Math.PI) + center[0];
+      // const yPos = yRadius * Math.cos(ySegment * Math.PI) + center[1];
+      // const zPos = zRadius * Math.sin(xSegment * 2.0 * Math.PI) * Math.sin(ySegment * Math.PI) + center[2];
+
+      // const normal = normalize([xPos, yPos, zPos]);
+
+      // positions.push(xPos, yPos, zPos);
+      // texCoords.push(xSegment, ySegment);
+      // normals.push(...normal);
+
       const phi = lng * 2 * Math.PI / longitudeBands;
       const sinPhi = Math.sin(phi);
       const cosPhi = Math.cos(phi);
@@ -22,14 +36,9 @@ export default function sphere(xRadius: number, yRadius: number, zRadius: number
       const u = 1 - (lng / longitudeBands);
       const v = 1 - (lat / latitudeBands);
 
-      normals.push((x - center[0]) / xRadius);
-      normals.push((y - center[1]) / yRadius);
-      normals.push((z - center[2]) / zRadius);
-      texCoords.push(u);
-      texCoords.push(v);
-      positions.push(x);
-      positions.push(y);
-      positions.push(z);
+      normals.push(...normalize([x, y, z]));
+      texCoords.push(u, v);
+      positions.push(x, y, z);
     }
   }
 

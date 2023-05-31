@@ -63,7 +63,7 @@ void main (){
 
   
   // -------------------- cook-torrance brdf --------------------
-  float NDF = distributionGGX(N, H, material.roughness);        
+  float NDF = distributionGGX(N, H, material.roughness);
   float G   = geometrySmith(N, V, L, material.roughness);      
   vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
   vec3 numerator    = NDF * G * F;
