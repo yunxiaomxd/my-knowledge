@@ -1,7 +1,7 @@
 import { subtractVectors, normalize } from '../gl';
 
 export default function torus() {
-  const radius = 100, tube = 40, radialSegments = 24, tubularSegments = 48, arc = Math.PI * 2;
+  const radius = 100, tube = 20, radialSegments = 12, tubularSegments = 24, arc = Math.PI * 2;
 
   const positions: number[] = [], indices: number[] = [], normals: number[] = [];
 

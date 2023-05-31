@@ -9,8 +9,8 @@ enum EGeometry {
   Torus,
   BezierCurves,
   LineNoise,
-  SurfaceNoise,
-  Plane,
+  // SurfaceNoise,
+  // Plane,
   Cubic,
   Sphere,
 }
@@ -18,23 +18,22 @@ enum EGeometry {
 type TMaterialNumberField = 'metallic' | 'roughness' | 'ao';
 type TMaterialField = 'albedo' | TMaterialNumberField;
 
-const worldWidth = 256, worldDepth = 256;
 const geometryMap = {
   [EGeometry.Torus]: torus(),
   [EGeometry.BezierCurves]: bezierCurve(),
   [EGeometry.LineNoise]: lineNoise(),
   // [EGeometry.SurfaceNoise]: surfaceNoise(),
-  [EGeometry.Plane]: plane(7500, 7500, worldWidth - 1, worldDepth - 1),
+  // [EGeometry.Plane]: plane(7500, 7500, worldWidth - 1, worldDepth - 1),
   [EGeometry.Cubic]: cubic(300, 300, 300, [0, 0, -1000]),
-  [EGeometry.Sphere]: sphere([0, 0, -1000], 32 * 5),
+  [EGeometry.Sphere]: sphere(150, 150, 150, 32, 32, [0, 0, -1000]),
 }
 
 interface IRenderGeometry { positionBuffer: WebGLBuffer; normalBuffer?: WebGLBuffer; indexBuffer?: WebGLBuffer; primitiveType: string; positionCount: number; indexCount?: number; };
 
 interface IGeometry { positions: number[]; indices: number[]; normals?: number[]; primitiveType: string };
 
-const defaultZ = -1;
-const targetZ = -1000;
+const defaultZ = 0;
+const targetZ = -2000;
 
 class AnimateGL {
   ref: React.RefObject<HTMLCanvasElement> | null = null;
@@ -67,7 +66,7 @@ class AnimateGL {
 
   light = {
     color: [1.0, 0.5, 1.0],
-    position: [1, 1, 0],
+    position: [0, 0, 0],
   }
 
   timer = 0;
@@ -180,10 +179,10 @@ class AnimateGL {
     modelMatrix = m4.zRotate(modelMatrix, degToRad(rotate.z));
 
     const projectionMatrix = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
-    let cameraMatrix = m4.lookAt(this.position, this.target, this.up);
-    cameraMatrix = m4.inverse(cameraMatrix);
+    const cameraMatrix = m4.lookAt(this.position, this.target, this.up);
+    const viewMatrix = m4.inverse(cameraMatrix);
 
-    let matrix = m4.multiply(projectionMatrix, cameraMatrix);
+    let matrix = m4.multiply(projectionMatrix, viewMatrix);
     matrix = m4.multiply(matrix, modelMatrix);
 
     const renderAnimate = () => {
@@ -273,10 +272,10 @@ const GeometryPBR = () => {
           &nbsp;&nbsp;
           <MenuItem onClick={() => toggleGeometry(EGeometry.LineNoise)}>线条噪音</MenuItem>
           &nbsp;&nbsp;
-          <MenuItem onClick={() => toggleGeometry(EGeometry.SurfaceNoise)}>模拟地形</MenuItem>
+          {/* <MenuItem onClick={() => toggleGeometry(EGeometry.SurfaceNoise)}>模拟地形</MenuItem>
           &nbsp;&nbsp;
           <MenuItem onClick={() => toggleGeometry(EGeometry.Plane)}>网格平面</MenuItem>
-          &nbsp;&nbsp;
+          &nbsp;&nbsp; */}
           <MenuItem onClick={() => toggleGeometry(EGeometry.Cubic)}>正方体</MenuItem>
           &nbsp;&nbsp;
           <MenuItem onClick={() => toggleGeometry(EGeometry.Sphere)}>球</MenuItem>
@@ -355,9 +354,9 @@ const GeometryPBR = () => {
             <Panel>
               <PanelTitle>灯光位置</PanelTitle>
               <PanelContent>
-                <input type="range" min={0} max={400} step={1} defaultValue={instance?.light.position[0]} onChange={(e) => handleChangeLight(0, e, 'position')} />
-                <input type="range" min={0} max={400} step={1} defaultValue={instance?.light.position[1]} onChange={(e) => handleChangeLight(1, e, 'position')} />
-                <input type="range" min={-2000} max={2000} step={1} defaultValue={instance?.light.position[2]} onChange={(e) => handleChangeLight(2, e, 'position')} />
+                <input type="range" min={-2000} max={2000} step={0.01} defaultValue={instance?.light.position[0]} onChange={(e) => handleChangeLight(0, e, 'position')} />
+                <input type="range" min={-2000} max={2000} step={0.01} defaultValue={instance?.light.position[1]} onChange={(e) => handleChangeLight(1, e, 'position')} />
+                <input type="range" min={-2000} max={2000} step={0.01} defaultValue={instance?.light.position[2]} onChange={(e) => handleChangeLight(2, e, 'position')} />
               </PanelContent>
             </Panel>
           </div>}

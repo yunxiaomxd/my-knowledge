@@ -1,95 +1,58 @@
-import { normalize } from "../gl";
-
-export default function sphere(center, radius = 1, widthSegments = 32, heightSegments = 16, phiStart = 0, phiLength = Math.PI * 2, thetaStart = 0, thetaLength = Math.PI ) {
-  widthSegments = Math.max( 3, Math.floor( widthSegments ) );
-  heightSegments = Math.max( 2, Math.floor( heightSegments ) );
-
-  const thetaEnd = Math.min( thetaStart + thetaLength, Math.PI );
-
-  let index = 0;
-  const grid = [];
-
-  // buffers
-
-  const indices = [];
+export default function sphere(xRadius: number, yRadius: number, zRadius: number, latitudeBands: number, longitudeBands: number, center: number[]) {
   const positions = [];
   const normals = [];
-  // const uvs = [];
+  const texCoords = [];
+  const indices = [];
 
-  // generate vertices, normals and uvs
+  // 生成顶点数据
+  for (let lat = 0; lat <= latitudeBands; lat++) {
+    const theta = lat * Math.PI / latitudeBands;
+    const sinTheta = Math.sin(theta);
+    const cosTheta = Math.cos(theta);
 
-  for ( let iy = 0; iy <= heightSegments; iy ++ ) {
+    for (let lng = 0; lng <= longitudeBands; lng++) {
+      const phi = lng * 2 * Math.PI / longitudeBands;
+      const sinPhi = Math.sin(phi);
+      const cosPhi = Math.cos(phi);
 
-    const verticesRow = [];
+      const x = xRadius * cosPhi * sinTheta + center[0];
+      const y = yRadius * cosTheta + center[1];
+      const z = zRadius * sinPhi * sinTheta + center[2];
 
-    const v = iy / heightSegments;
+      const u = 1 - (lng / longitudeBands);
+      const v = 1 - (lat / latitudeBands);
 
-    // special case for the poles
-
-    let uOffset = 0;
-
-    if ( iy == 0 && thetaStart == 0 ) {
-
-      uOffset = 0.5 / widthSegments;
-
-    } else if ( iy == heightSegments && thetaEnd == Math.PI ) {
-
-      uOffset = - 0.5 / widthSegments;
-
+      normals.push((x - center[0]) / xRadius);
+      normals.push((y - center[1]) / yRadius);
+      normals.push((z - center[2]) / zRadius);
+      texCoords.push(u);
+      texCoords.push(v);
+      positions.push(x);
+      positions.push(y);
+      positions.push(z);
     }
-
-    for ( let ix = 0; ix <= widthSegments; ix ++ ) {
-
-      const u = ix / widthSegments;
-
-      // vertex
-
-      const x = - radius * Math.cos( phiStart + u * phiLength ) * Math.sin( thetaStart + v * thetaLength ) + center[0];
-      const y = radius * Math.cos( thetaStart + v * thetaLength ) + center[1];
-      const z = radius * Math.sin( phiStart + u * phiLength ) * Math.sin( thetaStart + v * thetaLength ) + center[2];
-
-      positions.push( x, y, z );
-
-      // normal
-
-      const normal = normalize([x, y, z]);
-      normals.push( ...normal );
-
-      // uv
-
-      // uvs.push( u + uOffset, 1 - v );
-
-      verticesRow.push( index ++ );
-
-    }
-
-    grid.push( verticesRow );
-
   }
 
-  // indices
+  // 生成索引数据
+  for (let lat = 0; lat < latitudeBands; lat++) {
+    for(let lng = 0; lng < longitudeBands; lng++) {
+      const first = (lat * (longitudeBands + 1)) + lng;
+      const second = first + longitudeBands + 1;
 
-  for ( let iy = 0; iy < heightSegments; iy ++ ) {
+      indices.push(first);
+      indices.push(second);
+      indices.push(first + 1);
 
-    for ( let ix = 0; ix < widthSegments; ix ++ ) {
-
-      const a = grid[ iy ][ ix + 1 ];
-      const b = grid[ iy ][ ix ];
-      const c = grid[ iy + 1 ][ ix ];
-      const d = grid[ iy + 1 ][ ix + 1 ];
-
-      if ( iy !== 0 || thetaStart > 0 ) indices.push( a, b, d );
-      if ( iy !== heightSegments - 1 || thetaEnd < Math.PI ) indices.push( b, c, d );
-
+      indices.push(second);
+      indices.push(second + 1);
+      indices.push(first + 1);
     }
-
   }
 
-  // build geometry
-
-  // this.setIndex( indices );
-  // this.setAttribute( 'position', new Float32BufferAttribute( vertices, 3 ) );
-  // this.setAttribute( 'normal', new Float32BufferAttribute( normals, 3 ) );
-  // this.setAttribute( 'uv', new Float32BufferAttribute( uvs, 2 ) );
-  return { positions, indices, normals, primitiveType: 'TRIANGLES' };
+  return {
+    positions,
+    indices,
+    normals,
+    primitiveType: 'TRIANGLES',
+  }
 }

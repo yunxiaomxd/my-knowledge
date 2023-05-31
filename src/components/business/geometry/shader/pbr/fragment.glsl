@@ -49,42 +49,53 @@ vec3 fresnelSchlick (float cosTheta, vec3 F0){
   return F0 + (1.0 - F0) * pow (1.0 - cosTheta, 5.0);
 }
 
+//               c                  DFG
+// L0 = ∫（kd * ——— + ks * —————————————————————————）Li（p, wi）* n · wi
+//               pi         4 * (w0 · n) * （wi · n）
 void main (){
   vec3 N = normalize(v_normals);
   vec3 V = normalize(u_eye - v_fragCoord);
+  vec3 L = normalize(light.position - v_fragCoord);
+  vec3 H = normalize(V + L);
 
   vec3 F0 = vec3(0.04); 
   F0 = mix(F0, material.albedo, material.metallic);
-            
-  // reflectance equation
-  vec3 Lo = vec3(0.0);
 
-  // calculate per-light radiance
-  vec3 L = normalize(light.position - v_fragCoord);
-  vec3 H = normalize(V + L);
+  
+  // -------------------- cook-torrance brdf --------------------
+  float NDF = distributionGGX(N, H, material.roughness);        
+  float G   = geometrySmith(N, V, L, material.roughness);      
+  vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
+  vec3 numerator    = NDF * G * F;
+  float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+  vec3 specular     = numerator / denominator;  
+
+  // 使用菲涅尔等式作为镜面高光参数，由于 ks 与 G 是重复计算，所以乘法的时候省去该项操作
+  vec3 kS = F;
+  // 漫反射 diffuse
+  vec3 KD = vec3(1.0) - kS;
+  KD *= 1.0 - material.metallic;
+
+  // -------------------- lambert -----------------
+  vec3 lambert = KD * pow(material.albedo, vec3(2.2)) / PI;
+
+  // -------------------- Li --------------------
+  float NdotL = max(dot(N, L), 0.0);
   float distance    = length(light.position - v_fragCoord);
   float attenuation = 1.0 * (distance * distance);
   // vec3 radiance     = light.color * attenuation;  
   vec3 radiance = light.color;      
   
-  // cook-torrance brdf
-  float NDF = distributionGGX(N, H, material.roughness);        
-  float G   = geometrySmith(N, V, L, material.roughness);      
-  vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);       
-  
-  vec3 kS = F;
-  vec3 kD = vec3(1.0) - kS;
-  kD *= 1.0 - material.metallic;	  
-  
-  vec3 numerator    = NDF * G * F;
-  float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-  vec3 specular     = numerator / denominator;  
-      
-  // add to outgoing radiance Lo
-  float NdotL = max(dot(N, L), 0.0);                
-  Lo += (kD * material.albedo / PI + specular) * radiance * NdotL; 
+  // reflectance equation
+  vec3 Lo = vec3(0.0);
+  for (float i = 0.0; i < 4.0; i++) {          
+    Lo += (lambert + specular) * radiance * NdotL; 
+  }
 
+  // 环境光
   vec3 ambient = vec3(0.03) * material.albedo * material.ao;
+
+  // 最终的 pbr 渲染结果
   vec3 color = ambient + Lo;
 
   color = color / (color + vec3(1.0));
