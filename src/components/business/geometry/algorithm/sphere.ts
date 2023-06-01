@@ -1,60 +1,66 @@
-import { normalize } from "../gl";
+import { normalize, subtractVectors } from "../gl";
 
-export default function sphere(xRadius: number, yRadius: number, zRadius: number, latitudeBands: number, longitudeBands: number, center: number[]) {
+export default function sphere(center: number[], radius = 1, widthSegments = 64, heightSegments = 64, phiStart = 0, phiLength = Math.PI * 2, thetaStart = 0, thetaLength = Math.PI) {
   const positions = [];
   const normals = [];
-  const texCoords = [];
+  const uvs = [];
   const indices = [];
+  const grid = [];
+  let index = 0;
+
+  widthSegments = Math.max( 3, Math.floor( widthSegments ) );
+  heightSegments = Math.max( 2, Math.floor( heightSegments ) );
+
+  const thetaEnd = Math.min( thetaStart + thetaLength, Math.PI );
 
   // 生成顶点数据
-  for (let lat = 0; lat <= latitudeBands; lat++) {
-    const theta = lat * Math.PI / latitudeBands;
-    const sinTheta = Math.sin(theta);
-    const cosTheta = Math.cos(theta);
+  for ( let iy = 0; iy <= heightSegments; iy ++ ) {
+    const verticesRow = [];
+    const v = iy / heightSegments;
 
-    for (let lng = 0; lng <= longitudeBands; lng++) {
-      // const xSegment = lat / latitudeBands;
-      // const ySegment = lng / longitudeBands;
-      // const xPos = xRadius * Math.cos(xSegment * 2.0 * Math.PI) * Math.sin(ySegment * Math.PI) + center[0];
-      // const yPos = yRadius * Math.cos(ySegment * Math.PI) + center[1];
-      // const zPos = zRadius * Math.sin(xSegment * 2.0 * Math.PI) * Math.sin(ySegment * Math.PI) + center[2];
-
-      // const normal = normalize([xPos, yPos, zPos]);
-
-      // positions.push(xPos, yPos, zPos);
-      // texCoords.push(xSegment, ySegment);
-      // normals.push(...normal);
-
-      const phi = lng * 2 * Math.PI / longitudeBands;
-      const sinPhi = Math.sin(phi);
-      const cosPhi = Math.cos(phi);
-
-      const x = xRadius * cosPhi * sinTheta + center[0];
-      const y = yRadius * cosTheta + center[1];
-      const z = zRadius * sinPhi * sinTheta + center[2];
-
-      const u = 1 - (lng / longitudeBands);
-      const v = 1 - (lat / latitudeBands);
-
-      normals.push(...normalize([x, y, z]));
-      texCoords.push(u, v);
-      positions.push(x, y, z);
+    let uOffset = 0;
+    if ( iy == 0 && thetaStart == 0 ) {
+      uOffset = 0.5 / widthSegments;
+    } else if ( iy == heightSegments && thetaEnd == Math.PI ) {
+      uOffset = - 0.5 / widthSegments;
     }
+
+    for ( let ix = 0; ix <= widthSegments; ix ++ ) {
+      const u = ix / widthSegments;
+
+      // vertex
+      const x = - radius * Math.cos( phiStart + u * phiLength ) * Math.sin( thetaStart + v * thetaLength ) + center[0];
+      const y = radius * Math.cos( thetaStart + v * thetaLength ) + center[1];
+      const z = radius * Math.sin( phiStart + u * phiLength ) * Math.sin( thetaStart + v * thetaLength ) + center[2];
+      const pos = [x, y, z];
+      positions.push(...pos);
+
+      // normal
+      const distance = subtractVectors(pos, center);
+      const normal = normalize(distance);
+      normals.push(...normal);
+      // normals.push(x, y, z);
+
+      // uv
+      uvs.push( u + uOffset, 1 - v );
+
+      verticesRow.push( index ++ );
+    }
+    grid.push( verticesRow );
+
   }
 
-  // 生成索引数据
-  for (let lat = 0; lat < latitudeBands; lat++) {
-    for(let lng = 0; lng < longitudeBands; lng++) {
-      const first = (lat * (longitudeBands + 1)) + lng;
-      const second = first + longitudeBands + 1;
+  // indices
 
-      indices.push(first);
-      indices.push(second);
-      indices.push(first + 1);
+  for ( let iy = 0; iy < heightSegments; iy ++ ) {
+    for ( let ix = 0; ix < widthSegments; ix ++ ) {
+      const a = grid[ iy ][ ix + 1 ];
+      const b = grid[ iy ][ ix ];
+      const c = grid[ iy + 1 ][ ix ];
+      const d = grid[ iy + 1 ][ ix + 1 ];
 
-      indices.push(second);
-      indices.push(second + 1);
-      indices.push(first + 1);
+      if ( iy !== 0 || thetaStart > 0 ) indices.push( a, b, d );
+      if ( iy !== heightSegments - 1 || thetaEnd < Math.PI ) indices.push( b, c, d );
     }
   }
 

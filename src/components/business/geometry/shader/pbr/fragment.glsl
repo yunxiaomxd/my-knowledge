@@ -57,10 +57,8 @@ void main (){
   vec3 V = normalize(u_eye - v_fragCoord);
   vec3 L = normalize(light.position - v_fragCoord);
   vec3 H = normalize(V + L);
-
   vec3 F0 = vec3(0.04); 
   F0 = mix(F0, material.albedo, material.metallic);
-
   
   // -------------------- cook-torrance brdf --------------------
   float NDF = distributionGGX(N, H, material.roughness);
@@ -83,10 +81,10 @@ void main (){
   float NdotL = max(dot(N, L), 0.0);
   float distance    = length(light.position - v_fragCoord);
   float attenuation = 1.0 * (distance * distance);
-  // vec3 radiance     = light.color * attenuation;  
-  vec3 radiance = light.color;      
+  // vec3 radiance     = light.color * attenuation;
+  vec3 radiance = light.color;
   
-  // reflectance equation
+  // 积分处理
   vec3 Lo = vec3(0.0);
   for (float i = 0.0; i < 4.0; i++) {          
     Lo += (lambert + specular) * radiance * NdotL; 
@@ -97,7 +95,6 @@ void main (){
 
   // 最终的 pbr 渲染结果
   vec3 color = ambient + Lo;
-
   color = color / (color + vec3(1.0));
   color = pow(color, vec3(1.0/2.2));  
   

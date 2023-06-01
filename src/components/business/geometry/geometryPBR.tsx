@@ -25,7 +25,7 @@ const geometryMap = {
   // [EGeometry.SurfaceNoise]: surfaceNoise(),
   // [EGeometry.Plane]: plane(7500, 7500, worldWidth - 1, worldDepth - 1),
   [EGeometry.Cubic]: cubic(300, 300, 300, [0, 0, -1000]),
-  [EGeometry.Sphere]: sphere(150, 150, 150, 32, 32, [0, 0, -1000]),
+  [EGeometry.Sphere]: sphere([0, 0, -1000], 150),
 }
 
 interface IRenderGeometry { positionBuffer: WebGLBuffer; normalBuffer?: WebGLBuffer; indexBuffer?: WebGLBuffer; primitiveType: string; positionCount: number; indexCount?: number; };
@@ -281,7 +281,7 @@ const GeometryPBR = () => {
           <MenuItem onClick={() => toggleGeometry(EGeometry.Sphere)}>球</MenuItem>
         </Menu>
         <div style={{ display: 'flex' }}>
-          <canvas width={640} height={480} ref={ref} />
+          <canvas width={640} height={640} ref={ref} />
           {instance && <div>
             <Panel>
               <PanelTitle>旋转</PanelTitle>
