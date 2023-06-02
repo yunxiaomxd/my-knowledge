@@ -1,4 +1,9 @@
 :global {
+  .ant-menu-submenu-title, .ant-menu-item {
+    height: 28px !important;
+    line-height: 28px !important;
+  }
+
   .node {
     display: flex;
     align-items: center;
@@ -59,6 +64,12 @@
   .x6-edge-selected path:nth-child(2){
     stroke: #1890ff;
     stroke-width: 1.5px !important;
+  }
+
+  @keyframes ant-line {
+    to {
+        stroke-dashoffset: -1000
+    }
   }
 
   @keyframes running-line {

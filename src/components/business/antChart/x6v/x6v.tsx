@@ -1,13 +1,15 @@
-import { Graph, Path, Shape, Cell, Node, Edge } from '@antv/x6';
 import { useEffect, useRef, useState } from 'react';
-import { Button } from '../../../componentList';
-import { Container } from './styled';
+import { Input, Menu } from 'antd';
+import { Graph, Path, Node, Edge } from '@antv/x6';
+import { Container, MenuContainer } from './styled';
 import { Snapline } from '@antv/x6-plugin-snapline';
 import { Keyboard } from "@antv/x6-plugin-keyboard";
 import { Selection } from "@antv/x6-plugin-selection";
 import { History } from "@antv/x6-plugin-history";
+import { Dnd } from "@antv/x6-plugin-dnd";
 
 import './style.module.scss';
+import { SearchOutlined } from '@ant-design/icons';
 
 const portAttrs = {
   circle: {
@@ -29,7 +31,8 @@ const commonAttrs = {
 
 const X6V = () => {
   const ref = useRef<HTMLDivElement>(null);
-  const graghRef = useRef<Graph | null>(null);
+  const graphRef = useRef<Graph | null>(null);
+  const dndRef = useRef<Dnd | null>(null);
   const selectedRef = useRef<Edge | Node | null>(null);
   const [nodes, setNodes] = useState<Node<Node.Properties>[]>([]);
 
@@ -61,11 +64,15 @@ const X6V = () => {
         'dag-edge',
         {
           inherit: 'edge',
+          connector: { name: 'smooth' },
           attrs: {
             line: {
               stroke: '#C2C8D5',
-              strokeWidth: 1,
-              targetMarker: null,
+              strokeDasharray: 5,
+              targetMarker: 'classic',
+              style: {
+                animation: 'ant-line 30s infinite linear',
+              },
             },
           },
         },
@@ -103,9 +110,9 @@ const X6V = () => {
           },
         },
         connecting: {
-          snap: true,
-          allowBlank: false,
-          allowLoop: false,
+          snap: true, // 自动吸附
+          allowBlank: false, // 是否允许连接到画布空白位置的点
+          allowLoop: false, // 是否允许创建循环连线
           highlight: true,
           connector: 'algo-connector',
           connectionPoint: 'anchor',
@@ -116,12 +123,6 @@ const X6V = () => {
           createEdge() {
             return graph.createEdge({
               shape: 'dag-edge',
-              attrs: {
-                line: {
-                  strokeDasharray: '5 5',
-                },
-              },
-              zIndex: -1,
             })
           },
         },
@@ -182,17 +183,26 @@ const X6V = () => {
       graph.bindKey('backspace', () => {
         if (selectedRef.current) {
           if (selectedRef.current.shape.includes('edge')) {
-            graghRef.current!.removeEdge(selectedRef.current.id);
+            graphRef.current!.removeEdge(selectedRef.current.id);
           }
         }
       });
 
-      graghRef.current = graph;
+      graphRef.current = graph;
     }
   }, []);
 
+  useEffect(() => {
+    if (!graphRef.current) {
+      return;
+    }
+    dndRef.current = new Dnd({
+      target: graphRef.current,
+    });
+  }, [graphRef.current]);
+
   const handleAdd = (shape: string) => {
-    if (!graghRef.current) {
+    if (!graphRef.current) {
       return;
     }
     const node: Node.Metadata = {
@@ -218,9 +228,10 @@ const X6V = () => {
           { group: 'top', id: 'top1' },
           { group: 'bottom', id: 'bottom1' },
         ]
-      }
+      },
+      data: {}
     }
-    const resNode = graghRef.current.addNode(node);
+    const resNode = graphRef.current.addNode(node);
     setNodes((old) => ([...old, resNode]));
   };
 
@@ -228,13 +239,86 @@ const X6V = () => {
 
   }
 
+  const startDrag = (e: React.MouseEvent<HTMLElement, MouseEvent>) => {
+    if (!graphRef.current || !dndRef.current) return;
+    // 该 node 为拖拽的节点，默认也是放置到画布上的节点，可以自定义任何属性
+    const node = graphRef.current.createNode({
+      shape: "rect",
+      width: 100,
+      height: 40,
+      label: 'rect',
+      attrs: commonAttrs,
+      ports: {
+        groups: {
+          top: {
+            position: 'top',
+            attrs: { ...portAttrs },
+          },
+          bottom: {
+            position: 'bottom',
+            attrs: { ...portAttrs },
+          }
+        },
+        items: [
+          { group: 'top', id: 'top1' },
+          { group: 'bottom', id: 'bottom1' },
+        ]
+      },
+      data: {}
+    });
+    dndRef.current.start(node, e.nativeEvent);
+  };
+
+  const menuList = [
+    {
+      label: 'group1',
+      key: 'group1',
+      icon: null,
+      children: [
+        {
+          label: 'rect1',
+          key: 'rect1',
+          icon: null,
+          onMouseDown: startDrag,
+        },
+        {
+          label: 'rect2',
+          key: 'rect2',
+          icon: null,
+          onMouseDown: startDrag,
+        }
+      ]
+    },
+    {
+      label: 'group2',
+      key: 'group2',
+      icon: null,
+      children: [
+        {
+          label: 'circle1',
+          key: 'circle1',
+          icon: null,
+          onMouseDown: startDrag,
+        },
+        {
+          label: 'circle2',
+          key: 'circle2',
+          icon: null,
+          onMouseDown: startDrag,
+        }
+      ]
+    }
+  ];
+
   return (
     <Container>
-      <div>
-        <Button onClick={() => handleAdd('rect')}>rect</Button>
-        <Button onClick={() => handleAdd('circle')}>circle</Button>
-      </div>
-      <br />
+      <MenuContainer>
+        <div>
+          <div>title</div>
+          <Input suffix={<SearchOutlined />} />
+        </div>
+        <Menu mode="inline" items={menuList} />
+      </MenuContainer>
       <div ref={ref} />
     </Container>
   );

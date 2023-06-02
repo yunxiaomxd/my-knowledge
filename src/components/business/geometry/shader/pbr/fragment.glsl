@@ -21,9 +21,9 @@ struct Light {
 };
 uniform Light light;
 
-// camera, resultion
+// camera, 
 uniform vec3 u_eye;
-uniform vec2 u_resolution;
+uniform float attenuationDistance;
 
 const float PI = 3.14159265359;
 
@@ -80,9 +80,8 @@ void main (){
   // -------------------- Li --------------------
   float NdotL = max(dot(N, L), 0.0);
   float distance    = length(light.position - v_fragCoord);
-  float attenuation = 1.0 * (distance * distance);
-  // vec3 radiance     = light.color * attenuation;
-  vec3 radiance = light.color;
+  float attenuation = attenuationDistance / (distance * distance);
+  vec3 radiance     = light.color * attenuation;
   
   // 积分处理
   vec3 Lo = vec3(0.0);

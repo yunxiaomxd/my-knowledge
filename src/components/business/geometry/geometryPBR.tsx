@@ -69,6 +69,8 @@ class AnimateGL {
     position: [0, 0, 0],
   }
 
+  attenuationDistance = 1;
+
   timer = 0;
 
   constructor(ref: React.RefObject<HTMLCanvasElement>) {
@@ -94,6 +96,10 @@ class AnimateGL {
     this.program = program;
     this.positionLocation = positionLocation;
     this.normalLocation = normalLocation;
+  }
+
+  setAttenuationDistance = (value: number) => {
+    this.attenuationDistance = value;
   }
 
   setRotateX = (value: number) => {
@@ -154,11 +160,13 @@ class AnimateGL {
     const metallicLocation = gl.getUniformLocation(program, 'material.metallic');
     const roughnessLocation = gl.getUniformLocation(program, 'material.roughness');
     const aoLocation = gl.getUniformLocation(program, 'material.ao');
+    const attenuationDistanceLocation = gl.getUniformLocation(program, 'attenuationDistance');
 
     gl.uniform3fv(albedoLocation, new Float32Array(material.albedo));
     gl.uniform1f(metallicLocation, material.metallic);
     gl.uniform1f(roughnessLocation, material.roughness);
     gl.uniform1f(aoLocation, material.ao);
+    gl.uniform1f(attenuationDistanceLocation, this.attenuationDistance);
 
     const lightColorLocation = gl.getUniformLocation(program, 'light.color');
     const lightPoistionLocation = gl.getUniformLocation(program, 'light.position');
@@ -249,6 +257,12 @@ const GeometryPBR = () => {
   const handleChangeLight = (index: number, e: React.ChangeEvent<HTMLInputElement>, type: 'color' | 'position' = 'color') => {
     const value = +e.target.value;
     instance!.light[type][index] = value;
+    instance?.render();
+  }
+
+  const handleChangeAttenuationDistance = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = +e.target.value;
+    instance!.attenuationDistance = value;
     instance?.render();
   }
 
@@ -357,6 +371,12 @@ const GeometryPBR = () => {
                 <input type="range" min={-2000} max={2000} step={0.01} defaultValue={instance?.light.position[0]} onChange={(e) => handleChangeLight(0, e, 'position')} />
                 <input type="range" min={-2000} max={2000} step={0.01} defaultValue={instance?.light.position[1]} onChange={(e) => handleChangeLight(1, e, 'position')} />
                 <input type="range" min={-2000} max={2000} step={0.01} defaultValue={instance?.light.position[2]} onChange={(e) => handleChangeLight(2, e, 'position')} />
+              </PanelContent>
+            </Panel>
+            <Panel>
+              <PanelTitle>能量衰减系数</PanelTitle>
+              <PanelContent>
+                <input type="range" min={1} max={100000000} step={100} defaultValue={instance?.attenuationDistance} onChange={handleChangeAttenuationDistance} />
               </PanelContent>
             </Panel>
           </div>}

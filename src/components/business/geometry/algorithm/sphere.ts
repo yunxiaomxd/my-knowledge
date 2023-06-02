@@ -39,7 +39,6 @@ export default function sphere(center: number[], radius = 1, widthSegments = 64,
       const distance = subtractVectors(pos, center);
       const normal = normalize(distance);
       normals.push(...normal);
-      // normals.push(x, y, z);
 
       // uv
       uvs.push( u + uOffset, 1 - v );
