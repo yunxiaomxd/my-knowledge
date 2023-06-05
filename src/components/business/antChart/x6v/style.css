@@ -1,0 +1,11 @@
+@keyframes ant-line {
+  to {
+      stroke-dashoffset: -1000
+  }
+}
+
+@keyframes running-line {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
