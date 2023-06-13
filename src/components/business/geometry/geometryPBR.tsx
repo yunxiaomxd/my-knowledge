@@ -10,7 +10,7 @@ enum EGeometry {
   BezierCurves,
   LineNoise,
   // SurfaceNoise,
-  // Plane,
+  Plane,
   Cubic,
   Sphere,
 }
@@ -23,7 +23,7 @@ const geometryMap = {
   [EGeometry.BezierCurves]: bezierCurve(),
   [EGeometry.LineNoise]: lineNoise(),
   // [EGeometry.SurfaceNoise]: surfaceNoise(),
-  // [EGeometry.Plane]: plane(7500, 7500, worldWidth - 1, worldDepth - 1),
+  [EGeometry.Plane]: plane(1000, 1000, [0, 0, -1000]),
   [EGeometry.Cubic]: cubic(300, 300, 300, [0, 0, -1000]),
   [EGeometry.Sphere]: sphere([0, 0, -1000], 150),
 }
@@ -33,7 +33,7 @@ interface IRenderGeometry { positionBuffer: WebGLBuffer; normalBuffer?: WebGLBuf
 interface IGeometry { positions: number[]; indices: number[]; normals?: number[]; primitiveType: string };
 
 const defaultZ = 0;
-const targetZ = -2000;
+const targetZ = -1000;
 
 class AnimateGL {
   ref: React.RefObject<HTMLCanvasElement> | null = null;
@@ -69,7 +69,7 @@ class AnimateGL {
     position: [0, 0, 0],
   }
 
-  attenuationDistance = 1;
+  attenuationDistance = 10000000;
 
   timer = 0;
 
@@ -287,9 +287,9 @@ const GeometryPBR = () => {
           <MenuItem onClick={() => toggleGeometry(EGeometry.LineNoise)}>线条噪音</MenuItem>
           &nbsp;&nbsp;
           {/* <MenuItem onClick={() => toggleGeometry(EGeometry.SurfaceNoise)}>模拟地形</MenuItem>
-          &nbsp;&nbsp;
-          <MenuItem onClick={() => toggleGeometry(EGeometry.Plane)}>网格平面</MenuItem>
           &nbsp;&nbsp; */}
+          <MenuItem onClick={() => toggleGeometry(EGeometry.Plane)}>网格平面</MenuItem>
+          &nbsp;&nbsp;
           <MenuItem onClick={() => toggleGeometry(EGeometry.Cubic)}>正方体</MenuItem>
           &nbsp;&nbsp;
           <MenuItem onClick={() => toggleGeometry(EGeometry.Sphere)}>球</MenuItem>

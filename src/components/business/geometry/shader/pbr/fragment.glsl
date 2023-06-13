@@ -57,7 +57,7 @@ void main (){
   vec3 V = normalize(u_eye - v_fragCoord);
   vec3 L = normalize(light.position - v_fragCoord);
   vec3 H = normalize(V + L);
-  vec3 F0 = vec3(0.04); 
+  vec3 F0 = vec3(0.02); 
   F0 = mix(F0, material.albedo, material.metallic);
   
   // -------------------- cook-torrance brdf --------------------
@@ -91,10 +91,12 @@ void main (){
 
   // 环境光
   vec3 ambient = vec3(0.03) * material.albedo * material.ao;
+  vec3 color = ambient + Lo;
 
   // 最终的 pbr 渲染结果
-  vec3 color = ambient + Lo;
+  // HDR 渲染
   color = color / (color + vec3(1.0));
+  // Gamma校正
   color = pow(color, vec3(1.0/2.2));  
   
   gl_FragColor = vec4(vec3(color), 1.0);

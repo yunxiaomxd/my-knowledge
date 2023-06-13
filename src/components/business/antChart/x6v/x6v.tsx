@@ -254,19 +254,21 @@ const X6V = () => {
       );
 
       // 连接线存在连接关系时
-      graph.on('edge:connected', ({ isNew, edge }) => {
+      graph.on('edge:connected', (args) => {
+        const { isNew, edge } = args;
         if (isNew) {
           const { id, source, target } = edge;
-          graph.addEdge({
-            id,
-            shape: 'dag-edge',
-            source: {
-              ...source,
-            },
-            target: {
-              ...target,
-            },
-          })
+          const start = graph.getCellById((source as any).cell) as any;
+          const end = graph.getCellById((target as any).cell) as any;
+
+          const startPort = start.port.ports.filter((v) => v.id === (source as any).port)[0];
+          const endPort = end.port.ports.filter((v) => v.id === (target as any).port)[0];
+
+          // 存在连接关系时进行类型判定
+          if (startPort.type !== endPort.type) {
+            graph.removeEdge(id);
+            return;
+          }
         }
       });
 
@@ -279,6 +281,7 @@ const X6V = () => {
       graph.on("node:selected", ({ node }) => {
         // 最后一个选中的
         selectedRef.current = node;
+        console.log(node.prop());
         const nodes = graph.getSelectedCells() as Node[];
         if (nodes.length > 1) {
           pendingNodesRef.current = nodes;
@@ -337,6 +340,275 @@ const X6V = () => {
       });
 
       graphRef.current = graph;
+
+      graph.on('view:mounted', () => {
+        const res = graph.toJSON();
+        const cells = res.cells;
+
+        const edges = cells.filter((v) => v.shape?.includes('edge'));
+        console.log(edges);
+      });
+
+      graph.fromJSON([
+        {
+            "position": {
+                "x": 140,
+                "y": 80
+            },
+            "size": {
+                "width": 100,
+                "height": 40
+            },
+            "attrs": {
+                "text": {
+                    "text": "rect1"
+                },
+                "body": {
+                    "fill": "#fff",
+                    "stroke": "#8f8f8f",
+                    "strokeWidth": 1
+                }
+            },
+            "visible": true,
+            "shape": "rect",
+            "id": "5e883e9f-e951-427f-b1bf-e4788bf8b15a",
+            "data": {},
+            "ports": {
+                "groups": {
+                    "top": {
+                        "position": "top",
+                        "attrs": {
+                            "circle": {
+                                "magnet": true,
+                                "r": 4,
+                                "stroke": "#31d0c6",
+                                "fill": "#fff",
+                                "strokeWidth": 2
+                            }
+                        }
+                    },
+                    "bottom": {
+                        "position": "bottom",
+                        "attrs": {
+                            "circle": {
+                                "magnet": true,
+                                "r": 4,
+                                "stroke": "#31d0c6",
+                                "fill": "#fff",
+                                "strokeWidth": 2
+                            }
+                        }
+                    }
+                },
+                "items": [
+                    {
+                        "group": "top",
+                        "id": "top1",
+                        "type": "business"
+                    },
+                    {
+                        "group": "top",
+                        "id": "top2",
+                        "type": "abstract"
+                    },
+                    {
+                        "group": "bottom",
+                        "id": "bottom1",
+                        "type": "abstract"
+                    }
+                ]
+            },
+            "zIndex": 1
+        },
+        {
+            "position": {
+                "x": 100,
+                "y": 160
+            },
+            "size": {
+                "width": 100,
+                "height": 40
+            },
+            "attrs": {
+                "text": {
+                    "text": "rect2"
+                },
+                "body": {
+                    "fill": "#fff",
+                    "stroke": "#8f8f8f",
+                    "strokeWidth": 1
+                }
+            },
+            "visible": true,
+            "shape": "rect",
+            "id": "0807c823-db38-4a7e-8c11-2daecd239ca9",
+            "data": {},
+            "ports": {
+                "groups": {
+                    "top": {
+                        "position": "top",
+                        "attrs": {
+                            "circle": {
+                                "magnet": true,
+                                "r": 4,
+                                "stroke": "#31d0c6",
+                                "fill": "#fff",
+                                "strokeWidth": 2
+                            }
+                        }
+                    },
+                    "bottom": {
+                        "position": "bottom",
+                        "attrs": {
+                            "circle": {
+                                "magnet": true,
+                                "r": 4,
+                                "stroke": "#31d0c6",
+                                "fill": "#fff",
+                                "strokeWidth": 2
+                            }
+                        }
+                    }
+                },
+                "items": [
+                    {
+                        "group": "top",
+                        "id": "top1",
+                        "type": "business"
+                    },
+                    {
+                        "group": "top",
+                        "id": "top2",
+                        "type": "abstract"
+                    },
+                    {
+                        "group": "bottom",
+                        "id": "bottom1",
+                        "type": "abstract"
+                    }
+                ]
+            },
+            "zIndex": 2
+        },
+        {
+            "position": {
+                "x": 250,
+                "y": 270
+            },
+            "size": {
+                "width": 100,
+                "height": 40
+            },
+            "attrs": {
+                "text": {
+                    "text": "circle1"
+                },
+                "body": {
+                    "fill": "#fff",
+                    "stroke": "#8f8f8f",
+                    "strokeWidth": 1
+                }
+            },
+            "visible": true,
+            "shape": "rect",
+            "id": "d93c8eb0-4c8d-4005-896e-4d5e1a01d8dc",
+            "data": {},
+            "ports": {
+                "groups": {
+                    "top": {
+                        "position": "top",
+                        "attrs": {
+                            "circle": {
+                                "magnet": true,
+                                "r": 4,
+                                "stroke": "#31d0c6",
+                                "fill": "#fff",
+                                "strokeWidth": 2
+                            }
+                        }
+                    },
+                    "bottom": {
+                        "position": "bottom",
+                        "attrs": {
+                            "circle": {
+                                "magnet": true,
+                                "r": 4,
+                                "stroke": "#31d0c6",
+                                "fill": "#fff",
+                                "strokeWidth": 2
+                            }
+                        }
+                    }
+                },
+                "items": [
+                    {
+                        "group": "top",
+                        "id": "top1",
+                        "type": "business"
+                    },
+                    {
+                        "group": "top",
+                        "id": "top2",
+                        "type": "abstract"
+                    },
+                    {
+                        "group": "bottom",
+                        "id": "bottom1",
+                        "type": "abstract"
+                    }
+                ]
+            },
+            "zIndex": 3
+        },
+        {
+            "shape": "dag-edge",
+            "connector": {
+                "name": "smooth"
+            },
+            "id": "14c716b3-7dc1-48b8-ac79-208fccaf3150",
+            "source": {
+                "cell": "5e883e9f-e951-427f-b1bf-e4788bf8b15a",
+                "port": "bottom1"
+            },
+            "target": {
+                "cell": "0807c823-db38-4a7e-8c11-2daecd239ca9",
+                "port": "top2"
+            },
+            "zIndex": 4
+        },
+        {
+            "shape": "dag-edge",
+            "connector": {
+                "name": "smooth"
+            },
+            "id": "1a069563-5b43-42eb-b6cd-8cab591c9afc",
+            "source": {
+                "cell": "0807c823-db38-4a7e-8c11-2daecd239ca9",
+                "port": "bottom1"
+            },
+            "target": {
+                "cell": "d93c8eb0-4c8d-4005-896e-4d5e1a01d8dc",
+                "port": "top2"
+            },
+            "zIndex": 5
+        },
+        {
+            "shape": "dag-edge",
+            "connector": {
+                "name": "smooth"
+            },
+            "id": "e4638d13-8660-475a-8d43-968fccfac172",
+            "source": {
+                "cell": "5e883e9f-e951-427f-b1bf-e4788bf8b15a",
+                "port": "bottom1"
+            },
+            "target": {
+                "cell": "d93c8eb0-4c8d-4005-896e-4d5e1a01d8dc",
+                "port": "top2"
+            },
+            "zIndex": 6
+        }
+      ]);
     }
   }, []);
 
@@ -364,8 +636,12 @@ const X6V = () => {
         }
       },
       items: [
-        { group: 'top', id: 'top1' },
-        { group: 'bottom', id: 'bottom1' },
+        { group: 'top', id: 'top1', type: 'business' },
+        { group: 'top', id: 'top2', type: 'abstract' },
+        // { group: 'top', id: 'top3' },
+        // { group: 'top', id: 'top4' },
+        // { group: 'top', id: 'top5' },
+        { group: 'bottom', id: 'bottom1', type: 'abstract' },
       ]
     };
     const node = graphRef.current.createNode({
@@ -422,10 +698,11 @@ const X6V = () => {
       attrs: {
         body: {
           fill: '#fffbe6',
-          stroke: '#ffe7ba',
+          stroke: 'none',
         },
         label: {
           fontSize: 12,
+          text: 'test',
         },
       },
     });
@@ -500,6 +777,11 @@ const X6V = () => {
                 fill: 'transparent',
                 stroke: '#ddd',
               },
+              label: {
+                style: {
+                  justifyContent: 'start',
+                }
+              }
             }
           }),
         },
