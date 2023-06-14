@@ -50,7 +50,7 @@ class AnimateGL {
     z: 0,
   };
 
-  position: number[] = [0, 0, defaultZ];
+  position: number[] = [0, 1000, defaultZ];
   target: number[] = [0, 0, targetZ];
   up = [0, 1, 0];
 
@@ -66,7 +66,7 @@ class AnimateGL {
 
   light = {
     color: [1.0, 0.5, 1.0],
-    position: [0, 0, 0],
+    position: [0, 0, targetZ / 2],
   }
 
   attenuationDistance = 10000000;
@@ -257,6 +257,7 @@ const GeometryPBR = () => {
   const handleChangeLight = (index: number, e: React.ChangeEvent<HTMLInputElement>, type: 'color' | 'position' = 'color') => {
     const value = +e.target.value;
     instance!.light[type][index] = value;
+    console.log(instance!.light[type][index]);
     instance?.render();
   }
 
@@ -300,17 +301,17 @@ const GeometryPBR = () => {
             <Panel>
               <PanelTitle>旋转</PanelTitle>
               <PanelContent>
-                x: <input defaultValue={0} type="range" min={0} max={360} onChange={(e) => {
+                x: <input value={0} type="range" min={0} max={360} onChange={(e) => {
                   instance!.setRotateX(+e.target.value)
                   instance?.render();
                 }} />
                 <br />
-                y: <input defaultValue={0} type="range" min={0} max={360} onChange={(e) => {
+                y: <input value={0} type="range" min={0} max={360} onChange={(e) => {
                   instance!.setRotateY(+e.target.value)
                   instance?.render();
                 }} />
                 <br />
-                z: <input defaultValue={0} type="range" min={0} max={360} onChange={(e) => {
+                z: <input value={0} type="range" min={0} max={360} onChange={(e) => {
                   instance!.setRotateZ(+e.target.value)
                   instance?.render();
                 }} />
@@ -319,17 +320,17 @@ const GeometryPBR = () => {
             <Panel>
               <PanelTitle>相机位置</PanelTitle>
               <PanelContent>
-                x: <input  type="range" min={-2000} max={2000} onChange={(e) => {
+                x: <input value={instance.position[0]} type="range" min={-2000} max={2000} onChange={(e) => {
                   instance!.position[0] = +e.target.value;
                   instance?.render();
                 }} />
                 <br />
-                y: <input type="range" min={-2000} max={2000} onChange={(e) => {
+                y: <input value={instance.position[1]} type="range" min={-2000} max={2000} onChange={(e) => {
                   instance!.position[1] = +e.target.value;
                   instance?.render();
                 }} />
                 <br />
-                z: <input defaultValue={defaultZ} type="range" min={-2000} max={0} onChange={(e) => {
+                z: <input value={instance.position[2]}  type="range" min={-2000} max={0} onChange={(e) => {
                   instance!.position[2] = +e.target.value;
                   instance?.render();
                 }} />
@@ -339,9 +340,9 @@ const GeometryPBR = () => {
               <PanelTitle>材质</PanelTitle>
               <PanelContent>
                 albedo: <br />
-                <input type="range" min={0} max={1} step={0.01} defaultValue={instance.material.albedo[0]} onChange={(e) => handleChangeMaterial('albedo', 0, e)} />
-                <input type="range" min={0} max={1} step={0.01} defaultValue={instance.material.albedo[1]} onChange={(e) => handleChangeMaterial('albedo', 1, e)} />
-                <input type="range" min={0} max={1} step={0.01} defaultValue={instance.material.albedo[2]} onChange={(e) => handleChangeMaterial('albedo', 2, e)} />
+                <input type="range" min={0} max={1} step={0.01} value={instance.material.albedo[0]} onChange={(e) => handleChangeMaterial('albedo', 0, e)} />
+                <input type="range" min={0} max={1} step={0.01} value={instance.material.albedo[1]} onChange={(e) => handleChangeMaterial('albedo', 1, e)} />
+                <input type="range" min={0} max={1} step={0.01} value={instance.material.albedo[2]} onChange={(e) => handleChangeMaterial('albedo', 2, e)} />
                 {
                   ['metallic', 'roughness', 'ao'].map((v: string) => {
                     const key = v as TMaterialNumberField;
@@ -349,7 +350,7 @@ const GeometryPBR = () => {
                       <div key={v}>
                         {v}:
                         <br />
-                        <input type="range" min={0} max={1} step={0.01} defaultValue={instance.material[key]} onChange={(e) => handleChangeMaterial(key, -1, e)} />
+                        <input type="range" min={0} max={1} step={0.01} value={instance.material[key]} onChange={(e) => handleChangeMaterial(key, -1, e)} />
                         <br />
                       </div>
                     )
@@ -360,23 +361,23 @@ const GeometryPBR = () => {
             <Panel>
               <PanelTitle>灯光颜色</PanelTitle>
               <PanelContent>
-                <input type="range" min={0} max={1} step={0.01} defaultValue={instance.light.color[0]} onChange={(e) => handleChangeLight(0, e)} />
-                <input type="range" min={0} max={1} step={0.01} defaultValue={instance.light.color[1]} onChange={(e) => handleChangeLight(1, e)} />
-                <input type="range" min={0} max={1} step={0.01} defaultValue={instance.light.color[2]} onChange={(e) => handleChangeLight(2, e)} />
+                <input type="range" min={0} max={1} step={0.01} value={instance.light.color[0]} onChange={(e) => handleChangeLight(0, e)} />
+                <input type="range" min={0} max={1} step={0.01} value={instance.light.color[1]} onChange={(e) => handleChangeLight(1, e)} />
+                <input type="range" min={0} max={1} step={0.01} value={instance.light.color[2]} onChange={(e) => handleChangeLight(2, e)} />
               </PanelContent>
             </Panel>
             <Panel>
               <PanelTitle>灯光位置</PanelTitle>
               <PanelContent>
-                <input type="range" min={-2000} max={2000} step={0.01} defaultValue={instance?.light.position[0]} onChange={(e) => handleChangeLight(0, e, 'position')} />
-                <input type="range" min={-2000} max={2000} step={0.01} defaultValue={instance?.light.position[1]} onChange={(e) => handleChangeLight(1, e, 'position')} />
-                <input type="range" min={-2000} max={2000} step={0.01} defaultValue={instance?.light.position[2]} onChange={(e) => handleChangeLight(2, e, 'position')} />
+                <input type="range" min={-2000} max={2000} step={0.01} value={instance?.light.position[0]} onChange={(e) => handleChangeLight(0, e, 'position')} />
+                <input type="range" min={-2000} max={2000} step={0.01} value={instance?.light.position[1]} onChange={(e) => handleChangeLight(1, e, 'position')} />
+                <input type="range" min={-2000} max={2000} step={0.01} value={instance?.light.position[2]} onChange={(e) => handleChangeLight(2, e, 'position')} />
               </PanelContent>
             </Panel>
             <Panel>
               <PanelTitle>能量衰减系数</PanelTitle>
               <PanelContent>
-                <input type="range" min={1} max={100000000} step={100} defaultValue={instance?.attenuationDistance} onChange={handleChangeAttenuationDistance} />
+                <input type="range" min={1} max={100000000} step={100} value={instance?.attenuationDistance} onChange={handleChangeAttenuationDistance} />
               </PanelContent>
             </Panel>
           </div>}
