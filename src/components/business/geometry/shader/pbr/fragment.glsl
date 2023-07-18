@@ -14,10 +14,20 @@ struct Material {
 };
 uniform Material material;
 
-// lights
+/**
+ * shape:
+ * 1 - 太阳光
+ * 2 - 点光源
+ * 3 - 聚光灯(圆)
+ * 4 - 聚光灯(矩形)
+ */
+// point - light
 struct Light {
   vec3 position;
   vec3 color;
+  vec3 direction;
+  float cutOff;
+  float shape;
 };
 uniform Light light;
 
@@ -53,51 +63,111 @@ vec3 fresnelSchlick (float cosTheta, vec3 F0){
 // L0 = ∫（kd * ——— + ks * —————————————————————————）Li（p, wi）* n · wi
 //               pi         4 * (w0 · n) * （wi · n）
 void main (){
+  vec3 L = normalize(light.position - v_fragCoord);
   vec3 N = normalize(v_normals);
   vec3 V = normalize(u_eye - v_fragCoord);
-  vec3 L = normalize(light.position - v_fragCoord);
   vec3 H = normalize(V + L);
-  vec3 F0 = vec3(0.02); 
-  F0 = mix(F0, material.albedo, material.metallic);
-  
-  // -------------------- cook-torrance brdf --------------------
-  float NDF = distributionGGX(N, H, material.roughness);
-  float G   = geometrySmith(N, V, L, material.roughness);      
-  vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
-  vec3 numerator    = NDF * G * F;
-  float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-  vec3 specular     = numerator / denominator;  
 
-  // 使用菲涅尔等式作为镜面高光参数，由于 ks 与 G 是重复计算，所以乘法的时候省去该项操作
-  vec3 kS = F;
-  // 漫反射 diffuse
-  vec3 KD = vec3(1.0) - kS;
-  KD *= 1.0 - material.metallic;
+  float theta = dot(V, normalize(light.direction));
+  if (theta > light.cutOff) {
+    vec3 F0 = vec3(0.02); 
+    F0 = mix(F0, material.albedo, material.metallic);
+    
+    // -------------------- cook-torrance brdf --------------------
+    float NDF = distributionGGX(N, H, material.roughness);
+    float G   = geometrySmith(N, V, L, material.roughness);      
+    vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
+    vec3 numerator    = NDF * G * F;
+    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+    vec3 specular     = numerator / denominator;
 
-  // -------------------- lambert -----------------
-  vec3 lambert = KD * pow(material.albedo, vec3(2.2)) / PI;
+    // 使用菲涅尔等式作为镜面高光参数，由于 ks 与 G 是重复计算，所以乘法的时候省去该项操作
+    vec3 kS = F;
 
-  // -------------------- Li --------------------
-  float NdotL = max(dot(N, L), 0.0);
-  float distance    = length(light.position - v_fragCoord);
-  float attenuation = attenuationDistance / (distance * distance);
-  vec3 radiance     = light.color * attenuation;
-  
-  // 积分处理
-  vec3 Lo = vec3(0.0);
-  for (float i = 0.0; i < 4.0; i++) {          
-    Lo += (lambert + specular) * radiance * NdotL; 
+    // -------------------- lambert -----------------
+    // 漫反射 diffuse
+    vec3 KD = vec3(1.0) - kS;
+    KD *= 1.0 - material.metallic;
+    vec3 lambert = KD * pow(material.albedo, vec3(2.2)) / PI;
+
+    // -------------------- Li --------------------
+    float NdotL = max(dot(N, L), 0.0);
+    float distance    = length(light.position - v_fragCoord);
+    float attenuation = attenuationDistance / (distance * distance);
+    vec3 radiance     = light.color * attenuation;
+    
+    // 积分处理
+    vec3 Lo = vec3(0.0);
+    for (float i = 0.0; i < 4.0; i++) {          
+      Lo += (lambert + specular) * radiance * NdotL; 
+    }
+
+    // 环境光
+    vec3 ambient = vec3(0.03) * material.albedo * material.ao;
+    vec3 color = ambient + Lo;
+
+    // 最终的 pbr 渲染结果
+    // HDR 渲染
+    color = color / (color + vec3(1.0));
+    // Gamma校正
+    color = pow(color, vec3(1.0/2.2));  
+    
+    gl_FragColor = vec4(vec3(color), 1.0);
+  } else {
+    // 环境光
+    vec3 ambient = vec3(0.03) * material.albedo * material.ao;
+    vec3 color = ambient;
+
+    // 最终的 pbr 渲染结果
+    // HDR 渲染
+    color = color / (color + vec3(1.0));
+    // Gamma校正
+    color = pow(color, vec3(1.0/2.2));  
+    
+    gl_FragColor = vec4(vec3(color), 1.0);
   }
 
-  // 环境光
-  vec3 ambient = vec3(0.03) * material.albedo * material.ao;
-  vec3 color = ambient + Lo;
-
-  // 最终的 pbr 渲染结果
-  // HDR 渲染
-  color = color / (color + vec3(1.0));
-  // Gamma校正
-  color = pow(color, vec3(1.0/2.2));  
+  // vec3 F0 = vec3(0.02); 
+  // F0 = mix(F0, material.albedo, material.metallic);
   
-  gl_FragColor = vec4(vec3(color), 1.0);
+  // // -------------------- cook-torrance brdf --------------------
+  // float NDF = distributionGGX(N, H, material.roughness);
+  // float G   = geometrySmith(N, V, L, material.roughness);      
+  // vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
+  // vec3 numerator    = NDF * G * F;
+  // float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+  // vec3 specular     = numerator / denominator;
+
+  // // 使用菲涅尔等式作为镜面高光参数，由于 ks 与 G 是重复计算，所以乘法的时候省去该项操作
+  // vec3 kS = F;
+
+  // // -------------------- lambert -----------------
+  // // 漫反射 diffuse
+  // vec3 KD = vec3(1.0) - kS;
+  // KD *= 1.0 - material.metallic;
+  // vec3 lambert = KD * pow(material.albedo, vec3(2.2)) / PI;
+
+  // // -------------------- Li --------------------
+  // float NdotL = max(dot(N, L), 0.0);
+  // float distance    = length(light.position - v_fragCoord);
+  // float attenuation = attenuationDistance / (distance * distance);
+  // vec3 radiance     = light.color * attenuation;
+  
+  // // 积分处理
+  // vec3 Lo = vec3(0.0);
+  // for (float i = 0.0; i < 4.0; i++) {          
+  //   Lo += (lambert + specular) * radiance * NdotL; 
+  // }
+
+  // // 环境光
+  // vec3 ambient = vec3(0.03) * material.albedo * material.ao;
+  // vec3 color = ambient + Lo;
+
+  // // 最终的 pbr 渲染结果
+  // // HDR 渲染
+  // color = color / (color + vec3(1.0));
+  // // Gamma校正
+  // color = pow(color, vec3(1.0/2.2));  
+  
+  // gl_FragColor = vec4(vec3(color), 1.0);
 }
