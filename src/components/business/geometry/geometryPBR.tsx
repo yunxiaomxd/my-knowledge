@@ -66,7 +66,7 @@ class AnimateGL {
 
   light = {
     color: [1.0, 0.5, 1.0],
-    position: [0, 0, targetZ / 2],
+    position: [0, 0, targetZ/3],
   }
 
   attenuationDistance = 10000000;
@@ -191,21 +191,23 @@ class AnimateGL {
     const lightColorLocation = gl.getUniformLocation(program, 'light.color');
     const lightPoistionLocation = gl.getUniformLocation(program, 'light.position');
     const lightDirectionLocation = gl.getUniformLocation(program, 'light.direction');
-    const lightCutOffLocation = gl.getUniformLocation(program, 'light.cutOff');
+    const lightAngleLocation = gl.getUniformLocation(program, 'light.angle');
     const lightShapeLocation = gl.getUniformLocation(program, 'light.shape');
     gl.uniform3fv(lightColorLocation, new Float32Array(light.color));
     gl.uniform3fv(lightPoistionLocation, new Float32Array(light.position));
     gl.uniform3fv(lightDirectionLocation, new Float32Array(lightDirection));
-    gl.uniform1f(lightCutOffLocation, Math.cos(degToRad(45)));
+    gl.uniform1f(lightAngleLocation, Math.cos(degToRad(30)));
     gl.uniform1f(lightShapeLocation, 3.0);
     
-    const mvpLocation = gl.getUniformLocation(program, "u_mvp");
+    const modelLocation = gl.getUniformLocation(program, 'u_model');
+    const viewLocation = gl.getUniformLocation(program, 'u_view');
+    const projectLocation = gl.getUniformLocation(program, "u_projection");
 
     const aspect = gl.canvas.width / gl.canvas.height;
     const zNear = 1;
     const zFar = 2000;
 
-    var fieldOfViewRadians = degToRad(30);
+    const fieldOfViewRadians = degToRad(30);
 
     let modelMatrix = m4.identify();
     modelMatrix = m4.xRotate(modelMatrix, degToRad(rotate.x));
@@ -216,12 +218,15 @@ class AnimateGL {
     const cameraMatrix = m4.lookAt(this.position, this.target, this.up);
     const viewMatrix = m4.inverse(cameraMatrix);
 
-    let matrix = m4.multiply(projectionMatrix, viewMatrix);
-    matrix = m4.multiply(matrix, modelMatrix);
+    // let matrix = m4.multiply(projectionMatrix, viewMatrix);
+    // matrix = m4.multiply(matrix, modelMatrix);
 
     const renderAnimate = () => {
+      gl.uniformMatrix4fv(modelLocation, false, modelMatrix);
+      gl.uniformMatrix4fv(viewLocation, false, viewMatrix);
+      gl.uniformMatrix4fv(projectLocation, false, projectionMatrix);
 
-      gl.uniformMatrix4fv(mvpLocation, false, matrix);
+      // gl.uniformMatrix4fv(mvpLocation, false, matrix);
 
       const size = 3;
       const type = gl.FLOAT;
