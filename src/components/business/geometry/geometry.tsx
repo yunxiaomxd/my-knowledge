@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { init, createShader, createProgram, m4, degToRad } from "./gl";
 import { Container, Content, Menu, MenuItem, Panel, PanelContent, PanelTitle } from "./styled";
-import { torus, bezierCurve, lineNoise, surfaceNoise, cubic, plane } from "./algorithm";
+import { torus, bezierCurve, lineNoise, surfaceNoise, cubic, plane, sphere } from "./algorithm";
 import vertex from './shader/blinnPhong/vertex.glsl?raw';
 import fragment from './shader/blinnPhong/fragment.glsl?raw';
 
@@ -9,9 +9,8 @@ enum EGeometry {
   Torus,
   BezierCurves,
   LineNoise,
-  SurfaceNoise,
-  Plane,
-  Cubic
+  Cubic,
+  Sphere
 }
 
 type TMaterialField = 'ambient' | 'diffuse' | 'specular' | 'shininess';
@@ -21,9 +20,8 @@ const geometryMap = {
   [EGeometry.Torus]: torus(),
   [EGeometry.BezierCurves]: bezierCurve(),
   [EGeometry.LineNoise]: lineNoise(),
-  // [EGeometry.SurfaceNoise]: surfaceNoise(),
-  [EGeometry.Plane]: plane(7500, 7500, worldWidth - 1, worldDepth - 1),
   [EGeometry.Cubic]: cubic(300, 300, 300, [0, 0, -1000]),
+  [EGeometry.Sphere]: sphere([0, 0, ])
 }
 
 interface IRenderGeometry { positionBuffer: WebGLBuffer; normalBuffer?: WebGLBuffer; indexBuffer?: WebGLBuffer; primitiveType: string; positionCount: number; indexCount?: number; };
@@ -60,7 +58,11 @@ class AnimateGL {
   }
 
   light = {
+    // position: [1.2, 1.0, -2.0],
+    position: [0, 0, -600],
     color: [1.0, 1.0, 1.0],
+    angle: Math.cos(degToRad(30)),
+    direction: [0, 0, targetZ],
   }
 
   timer = 0;
@@ -142,14 +144,19 @@ class AnimateGL {
     const diffuseLocation = gl.getUniformLocation(program, 'material.diffuse');
     const specularLocation = gl.getUniformLocation(program, 'material.specular');
     const shininessLocation = gl.getUniformLocation(program, 'material.shininess');
-
     gl.uniform3fv(ambientLocation, new Float32Array(material.ambient));
     gl.uniform3fv(diffuseLocation, new Float32Array(material.diffuse));
     gl.uniform3fv(specularLocation, new Float32Array(material.specular));
     gl.uniform1f(shininessLocation, material.shininess);
 
-    const lightLocation = gl.getUniformLocation(program, 'u_lightColor');
-    gl.uniform3fv(lightLocation, new Float32Array(light.color));
+    const lightPositionLocation = gl.getUniformLocation(program, 'light.position');
+    const lightColorLocation = gl.getUniformLocation(program, 'light.color');
+    const lightDirectionLocation = gl.getUniformLocation(program, 'light.direction');
+    const lightAngleLocation = gl.getUniformLocation(program, 'light.angle');
+    gl.uniform3fv(lightPositionLocation, new Float32Array(light.position));
+    gl.uniform3fv(lightColorLocation, new Float32Array(light.color));
+    gl.uniform3fv(lightDirectionLocation, new Float32Array(light.direction));
+    gl.uniform1f(lightAngleLocation, light.angle);
 
     const eyeLocation = gl.getUniformLocation(program, 'u_eye');
     gl.uniform3fv(eyeLocation, new Float32Array(this.position));
@@ -236,9 +243,9 @@ const Geometry = () => {
     instance?.render();
   }
 
-  const handleChangeLight = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChangeLight = (type: any, index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const value = +e.target.value;
-    instance!.light.color[index] = value;
+    (instance!.light as any)[type][index] = value;
     instance?.render();
   }
 
@@ -246,7 +253,7 @@ const Geometry = () => {
     if (ref.current) {
       const animateGL = new AnimateGL(ref);
       setInstance(animateGL);
-      animateGL.add(geometryMap[EGeometry.Torus]);
+      animateGL.add(geometryMap[EGeometry.Cubic]);
       animateGL.render();
     }
   }, [ref]);
@@ -261,10 +268,6 @@ const Geometry = () => {
           <MenuItem onClick={() => toggleGeometry(EGeometry.BezierCurves)}>贝塞尔曲线</MenuItem>
           &nbsp;&nbsp;
           <MenuItem onClick={() => toggleGeometry(EGeometry.LineNoise)}>线条噪音</MenuItem>
-          &nbsp;&nbsp;
-          <MenuItem onClick={() => toggleGeometry(EGeometry.SurfaceNoise)}>模拟地形</MenuItem>
-          &nbsp;&nbsp;
-          <MenuItem onClick={() => toggleGeometry(EGeometry.Plane)}>网格平面</MenuItem>
           &nbsp;&nbsp;
           <MenuItem onClick={() => toggleGeometry(EGeometry.Cubic)}>正方体</MenuItem>
         </Menu>
@@ -332,11 +335,27 @@ const Geometry = () => {
               </PanelContent>
             </Panel>
             <Panel>
-              <PanelTitle>灯光</PanelTitle>
+              <PanelTitle>灯光 color</PanelTitle>
               <PanelContent>
-                <input type="range" min={0} max={1} step={0.01} defaultValue={instance?.light.color[0]} onChange={(e) => handleChangeLight(0, e)} />
-                <input type="range" min={0} max={1} step={0.01} defaultValue={instance?.light.color[1]} onChange={(e) => handleChangeLight(1, e)} />
-                <input type="range" min={0} max={1} step={0.01} defaultValue={instance?.light.color[2]} onChange={(e) => handleChangeLight(2, e)} />
+                <input type="range" min={0} max={1} step={0.01} defaultValue={instance?.light.color[0]} onChange={(e) => handleChangeLight('color', 0, e)} />
+                <input type="range" min={0} max={1} step={0.01} defaultValue={instance?.light.color[1]} onChange={(e) => handleChangeLight('color', 1, e)} />
+                <input type="range" min={0} max={1} step={0.01} defaultValue={instance?.light.color[2]} onChange={(e) => handleChangeLight('color', 2, e)} />
+              </PanelContent>
+            </Panel>
+            <Panel>
+              <PanelTitle>灯光 direction</PanelTitle>
+              <PanelContent>
+                <input type="range" min={-1000} max={-1} step={1} defaultValue={instance?.light.direction[0]} onChange={(e) => handleChangeLight('direction', 0, e)} />
+                <input type="range" min={-1000} max={-1} step={1} defaultValue={instance?.light.direction[1]} onChange={(e) => handleChangeLight('direction', 1, e)} />
+                <input type="range" min={-1000} max={-1} step={1} defaultValue={instance?.light.direction[2]} onChange={(e) => handleChangeLight('direction', 2, e)} />
+              </PanelContent>
+            </Panel>
+            <Panel>
+              <PanelTitle>灯光 position</PanelTitle>
+              <PanelContent>
+                <input type="range" min={-1000} max={-1} step={1} defaultValue={instance?.light.position[0]} onChange={(e) => handleChangeLight('position', 0, e)} />
+                <input type="range" min={-1000} max={-1} step={1} defaultValue={instance?.light.position[1]} onChange={(e) => handleChangeLight('position', 1, e)} />
+                <input type="range" min={-1000} max={-1} step={1} defaultValue={instance?.light.position[2]} onChange={(e) => handleChangeLight('position', 2, e)} />
               </PanelContent>
             </Panel>
           </div>}
