@@ -20,7 +20,7 @@ const geometryMap = {
   [EGeometry.Torus]: torus(),
   [EGeometry.BezierCurves]: bezierCurve(),
   [EGeometry.LineNoise]: lineNoise(),
-  [EGeometry.Cubic]: cubic(300, 300, 300, [0, 0, -1000]),
+  [EGeometry.Cubic]: cubic(100, 100, 100, [0, 0, 0]),
   [EGeometry.Sphere]: sphere([0, 0, ])
 }
 
@@ -46,8 +46,8 @@ class AnimateGL {
     z: 0,
   };
 
-  position: number[] = [0, 0, defaultZ];
-  target: number[] = [0, 0, targetZ];
+  position: number[] = [0, 0, -500];
+  target: number[] = [0, 0, 0];
   up = [0, 1, 0];
 
   material = {
@@ -58,11 +58,10 @@ class AnimateGL {
   }
 
   light = {
-    // position: [1.2, 1.0, -2.0],
-    position: [0, 0, -600],
+    position: [0, 0, -3],
     color: [1.0, 1.0, 1.0],
     angle: Math.cos(degToRad(30)),
-    direction: [0, 0, targetZ],
+    direction: [0, 0, 0],
   }
 
   timer = 0;
@@ -165,24 +164,26 @@ class AnimateGL {
 
     const aspect = gl.canvas.width / gl.canvas.height;
     const zNear = 1;
-    const zFar = 2000;
+    const zFar = 1000;
 
     var fieldOfViewRadians = degToRad(30);
+
+    const projectionMatrix = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
+    const cameraMatrix = m4.lookAt(this.position, this.target, this.up);
+   
+    const matrix = m4.multiply(projectionMatrix, cameraMatrix);
 
     let modelMatrix = m4.identify();
     modelMatrix = m4.xRotate(modelMatrix, degToRad(rotate.x));
     modelMatrix = m4.yRotate(modelMatrix, degToRad(rotate.y));
     modelMatrix = m4.zRotate(modelMatrix, degToRad(rotate.z));
 
-    const projectionMatrix = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
-    const cameraMatrix = m4.lookAt(this.position, this.target, this.up);
-   
-    let matrix = m4.multiply(projectionMatrix, cameraMatrix);
-    matrix = m4.multiply(matrix, modelMatrix);
+    const modelLocation = gl.getUniformLocation(program, 'u_model');
 
     const renderAnimate = () => {
 
       gl.uniformMatrix4fv(mvpLocation, false, matrix);
+      gl.uniformMatrix4fv(modelLocation, false, modelMatrix);
 
       const size = 3;
       const type = gl.FLOAT;
@@ -296,17 +297,17 @@ const Geometry = () => {
             <Panel>
               <PanelTitle>相机位置</PanelTitle>
               <PanelContent>
-                x: <input  type="range" min={-2000} max={2000} onChange={(e) => {
+                x: <input defaultValue={instance.position[0]} type="range" min={-1000} max={1000} onChange={(e) => {
                   instance!.position[0] = +e.target.value;
                   instance?.render();
                 }} />
                 <br />
-                y: <input type="range" min={-2000} max={2000} onChange={(e) => {
+                y: <input defaultValue={instance.position[1]} type="range" min={-1000} max={1000} onChange={(e) => {
                   instance!.position[1] = +e.target.value;
                   instance?.render();
                 }} />
                 <br />
-                z: <input defaultValue={defaultZ} type="range" min={-2000} max={0} onChange={(e) => {
+                z: <input defaultValue={instance.position[2]} type="range" min={-1000} max={1000} onChange={(e) => {
                   instance!.position[2] = +e.target.value;
                   instance?.render();
                 }} />
@@ -353,9 +354,9 @@ const Geometry = () => {
             <Panel>
               <PanelTitle>灯光 position</PanelTitle>
               <PanelContent>
-                <input type="range" min={-1000} max={-1} step={1} defaultValue={instance?.light.position[0]} onChange={(e) => handleChangeLight('position', 0, e)} />
-                <input type="range" min={-1000} max={-1} step={1} defaultValue={instance?.light.position[1]} onChange={(e) => handleChangeLight('position', 1, e)} />
-                <input type="range" min={-1000} max={-1} step={1} defaultValue={instance?.light.position[2]} onChange={(e) => handleChangeLight('position', 2, e)} />
+                <input type="range" min={-1000} max={1000} step={1} defaultValue={instance?.light.position[0]} onChange={(e) => handleChangeLight('position', 0, e)} />
+                <input type="range" min={-1000} max={1000} step={1} defaultValue={instance?.light.position[1]} onChange={(e) => handleChangeLight('position', 1, e)} />
+                <input type="range" min={-1000} max={1000} step={1} defaultValue={instance?.light.position[2]} onChange={(e) => handleChangeLight('position', 2, e)} />
               </PanelContent>
             </Panel>
           </div>}

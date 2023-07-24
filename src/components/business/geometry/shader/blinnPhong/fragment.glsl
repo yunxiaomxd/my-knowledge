@@ -12,7 +12,7 @@ struct Material {
 struct Light {
   vec3 position;
   vec3 color;
-  vec3 direction;
+  vec3 direction; // 光线法线方向
   float angle;
 };
 
@@ -26,15 +26,17 @@ void main() {
 
   vec3 objectColor = vec3(1.0, 0.5, 0.31);
 
+  // 观察者方向
+  vec3 surfaceToView = normalize(u_eye - v_fragCoord);
   // 聚光灯照射到物体的方向计算
-  vec3 lightDirection = normalize(light.position - v_fragCoord);
+  vec3 surfaceToLight = normalize(light.position - v_fragCoord);
 
   // 光线衰减能量
   float distance = length(light.position - v_fragCoord);
   float attenuation = 1.0 / (1.0 + 0.1 * distance + 0.01 * distance * distance);
 
   // 计算聚光灯影响因子，限制角度
-  float angleDot = dot(-light.direction, normalize(lightDirection));
+  float angleDot = dot(-light.direction, surfaceToLight);
   float angleFactor = smoothstep(light.angle, light.angle + 0.1, acos(angleDot));
 
   // 环境光
@@ -46,14 +48,13 @@ void main() {
   vec3 diffuse = (diff * material.diffuse) * light.color;
 
   // 高光
-  vec3 viewDir = normalize(u_eye - v_fragCoord);
-  vec3 reflectDir = reflect(-lightDirection, normal);
-  vec3 halfwayDir = normalize(lightDirection + viewDir);
+  vec3 reflectDir = reflect(-surfaceToLight, normal);
+  vec3 halfwayDir = normalize(surfaceToLight + surfaceToView);
   float maxDir = max(dot(normal, halfwayDir), .0);
   float spec = pow(maxDir, material.shininess);
   vec3 specular = light.color * (spec * material.specular);
 
-  vec3 result = (ambient + diffuse + specular) * objectColor * 0.3;
+  vec3 result = (ambient + diffuse + specular) * objectColor * attenuation * angleFactor;
 
 	gl_FragColor = vec4(result, 1.0);	
 }
