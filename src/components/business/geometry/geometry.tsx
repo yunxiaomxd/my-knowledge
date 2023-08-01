@@ -60,7 +60,8 @@ class AnimateGL {
   light = {
     position: [0, 0, -3],
     color: [1.0, 1.0, 1.0],
-    angle: Math.cos(degToRad(30)),
+    innerAngle: Math.cos(degToRad(10)),
+    outerAngle: Math.cos(degToRad(20)),
     direction: [0, 0, 0],
   }
 
@@ -151,11 +152,13 @@ class AnimateGL {
     const lightPositionLocation = gl.getUniformLocation(program, 'light.position');
     const lightColorLocation = gl.getUniformLocation(program, 'light.color');
     const lightDirectionLocation = gl.getUniformLocation(program, 'light.direction');
-    const lightAngleLocation = gl.getUniformLocation(program, 'light.angle');
+    const lightInnerAngleLocation = gl.getUniformLocation(program, 'light.innerAngle');
+    const lightOuterAngleLocation = gl.getUniformLocation(program, 'light.outerAngle');
     gl.uniform3fv(lightPositionLocation, new Float32Array(light.position));
     gl.uniform3fv(lightColorLocation, new Float32Array(light.color));
     gl.uniform3fv(lightDirectionLocation, new Float32Array(light.direction));
-    gl.uniform1f(lightAngleLocation, light.angle);
+    gl.uniform1f(lightInnerAngleLocation, light.innerAngle);
+    gl.uniform1f(lightOuterAngleLocation, light.outerAngle);
 
     const eyeLocation = gl.getUniformLocation(program, 'u_eye');
     gl.uniform3fv(eyeLocation, new Float32Array(this.position));
