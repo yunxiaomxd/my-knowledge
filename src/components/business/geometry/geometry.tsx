@@ -60,11 +60,7 @@ class AnimateGL {
     color: [1.0, 1.0, 1.0],
     innerAngle: Math.cos(degToRad(10)),
     outerAngle: Math.cos(degToRad(20)),
-    direction: [
-      -0.3102266788482666,
-      -0.19389168918132782,
-      -0.9306800961494446
-    ],
+    direction: [],
   }
 
   timer = 0;
@@ -92,6 +88,7 @@ class AnimateGL {
     this.program = program;
     this.positionLocation = positionLocation;
     this.normalLocation = normalLocation;
+
   }
 
   setRotateX = (value: number) => {
@@ -142,6 +139,10 @@ class AnimateGL {
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.enable(gl.CULL_FACE);
 
+    
+    let directionMatrix = m4.identify();
+    directionMatrix = m4.lookAt(light.position, this.target, this.up);
+
     const ambientLocation = gl.getUniformLocation(program, 'material.ambient');
     const diffuseLocation = gl.getUniformLocation(program, 'material.diffuse');
     const specularLocation = gl.getUniformLocation(program, 'material.specular');
@@ -160,7 +161,7 @@ class AnimateGL {
     const lightOuterAngleLocation = gl.getUniformLocation(program, 'light.outerAngle');
     gl.uniform3fv(lightPositionLocation, new Float32Array(light.position));
     gl.uniform3fv(lightColorLocation, new Float32Array(light.color));
-    gl.uniform3fv(lightDirectionLocation, new Float32Array(light.direction));
+    gl.uniform3fv(lightDirectionLocation, new Float32Array([-directionMatrix[8], -directionMatrix[9], -directionMatrix[10]]));
     gl.uniform1f(lightInnerAngleLocation, light.innerAngle);
     gl.uniform1f(lightOuterAngleLocation, light.outerAngle);
 
