@@ -1,3 +1,5 @@
+import { m4 } from "../gl";
+
 export default function cubic(width: number, height: number, depth: number, center: number[]) {
   const [x, y, z] = center;
   const halfWidth = width / 2;
@@ -102,7 +104,7 @@ export default function cubic(width: number, height: number, depth: number, cent
   //   normals,
   //   primitiveType: 'TRIANGLES',
   // }
-  return {
+  const res = {
     positions: [
       // left column front
       0,   0,  0,
@@ -364,4 +366,16 @@ export default function cubic(width: number, height: number, depth: number, cent
     ],
     primitiveType: 'TRIANGLES',
   }
+
+  let matrix = m4.xRotation(Math.PI);
+  matrix = m4.translate(matrix, -50, -75, -15);
+
+  for (var ii = 0; ii < res.positions.length; ii += 3) {
+    var vector = m4.transformPoint(matrix, [res.positions[ii + 0], res.positions[ii + 1], res.positions[ii + 2], 1]);
+    res.positions[ii + 0] = vector[0];
+    res.positions[ii + 1] = vector[1];
+    res.positions[ii + 2] = vector[2];
+  }
+
+  return res;
 }

@@ -3,6 +3,7 @@ import { Geometry, GeometryPBR } from './geometry';
 import { Theme } from './theme';
 import { X6V } from './antChart';
 import { SvgEditor } from './svgEditor';
+import { TextMark } from './textMark';
 
 export * from './theme';
 
@@ -13,6 +14,10 @@ export const BusinessList: IMenuItem = {
     label: '主题切换',
     value: 'theme',
     component: Theme
+  }, {
+    label: '文本标注',
+    value: 'textMark',
+    component: TextMark,
   }, {
     label: 'geometry(webgl) - blinn-phong',
     value: 'geometry',

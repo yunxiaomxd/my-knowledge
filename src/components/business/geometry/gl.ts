@@ -188,6 +188,20 @@ export const m4 = {
     ];
   },
 
+  transformPoint: function(m: number[], v: number[], dst?: any) {
+    dst = dst || new Float32Array(3);
+    var v0 = v[0];
+    var v1 = v[1];
+    var v2 = v[2];
+    var d = v0 * m[0 * 4 + 3] + v1 * m[1 * 4 + 3] + v2 * m[2 * 4 + 3] + m[3 * 4 + 3];
+
+    dst[0] = (v0 * m[0 * 4 + 0] + v1 * m[1 * 4 + 0] + v2 * m[2 * 4 + 0] + m[3 * 4 + 0]) / d;
+    dst[1] = (v0 * m[0 * 4 + 1] + v1 * m[1 * 4 + 1] + v2 * m[2 * 4 + 1] + m[3 * 4 + 1]) / d;
+    dst[2] = (v0 * m[0 * 4 + 2] + v1 * m[1 * 4 + 2] + v2 * m[2 * 4 + 2] + m[3 * 4 + 2]) / d;
+
+    return dst;
+  },
+
   multiply: function(a: any[], b: any[]) {
     var a00 = a[0 * 4 + 0];
     var a01 = a[0 * 4 + 1];

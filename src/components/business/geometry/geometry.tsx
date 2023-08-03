@@ -28,9 +28,6 @@ interface IRenderGeometry { positionBuffer: WebGLBuffer; normalBuffer?: WebGLBuf
 
 interface IGeometry { positions: number[]; indices: number[]; normals?: number[]; primitiveType: string };
 
-const defaultZ = -1;
-const targetZ = -1000;
-
 class AnimateGL {
   ref: React.RefObject<HTMLCanvasElement> | null = null;
   list: IRenderGeometry[] = [];
@@ -46,7 +43,7 @@ class AnimateGL {
     z: 0,
   };
 
-  position: number[] = [0, 0, -500];
+  position: number[] = [0, 0, 500];
   target: number[] = [0, 0, 0];
   up = [0, 1, 0];
 
@@ -54,15 +51,20 @@ class AnimateGL {
     ambient: [1.0, 0.5, 0.31],
     diffuse: [1.0, 0.5, 0.31],
     specular: [0.5, 0.5, 0.5],
-    shininess: 32,
+    shininess: 150,
+    color: [0.6, 0.2, 0.7],
   }
 
   light = {
-    position: [0, 0, -3],
+    position: [40, 60, 120],
     color: [1.0, 1.0, 1.0],
     innerAngle: Math.cos(degToRad(10)),
     outerAngle: Math.cos(degToRad(20)),
-    direction: [0, 0, 0],
+    direction: [
+      -0.3102266788482666,
+      -0.19389168918132782,
+      -0.9306800961494446
+    ],
   }
 
   timer = 0;
@@ -144,10 +146,12 @@ class AnimateGL {
     const diffuseLocation = gl.getUniformLocation(program, 'material.diffuse');
     const specularLocation = gl.getUniformLocation(program, 'material.specular');
     const shininessLocation = gl.getUniformLocation(program, 'material.shininess');
+    const colorLocation = gl.getUniformLocation(program, 'material.color');
     gl.uniform3fv(ambientLocation, new Float32Array(material.ambient));
     gl.uniform3fv(diffuseLocation, new Float32Array(material.diffuse));
     gl.uniform3fv(specularLocation, new Float32Array(material.specular));
     gl.uniform1f(shininessLocation, material.shininess);
+    gl.uniform3fv(colorLocation, new Float32Array(material.color));
 
     const lightPositionLocation = gl.getUniformLocation(program, 'light.position');
     const lightColorLocation = gl.getUniformLocation(program, 'light.color');
@@ -165,21 +169,23 @@ class AnimateGL {
 
     const mvpLocation = gl.getUniformLocation(program, "u_mvp");
 
-    const aspect = gl.canvas.width / gl.canvas.height;
+    const aspect = 933 / 880;
     const zNear = 1;
-    const zFar = 1000;
+    const zFar = 2000;
 
-    var fieldOfViewRadians = degToRad(30);
+    var fieldOfViewRadians = degToRad(60);
 
     const projectionMatrix = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
     const cameraMatrix = m4.lookAt(this.position, this.target, this.up);
-   
-    const matrix = m4.multiply(projectionMatrix, cameraMatrix);
+    const cameraInverseMatrix = m4.inverse(cameraMatrix);
 
     let modelMatrix = m4.identify();
     modelMatrix = m4.xRotate(modelMatrix, degToRad(rotate.x));
     modelMatrix = m4.yRotate(modelMatrix, degToRad(rotate.y));
     modelMatrix = m4.zRotate(modelMatrix, degToRad(rotate.z));
+    
+    let matrix = m4.multiply(projectionMatrix, cameraInverseMatrix);
+    matrix = m4.multiply(matrix, modelMatrix);
 
     const modelLocation = gl.getUniformLocation(program, 'u_model');
 
@@ -200,7 +206,6 @@ class AnimateGL {
         gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer as WebGLBuffer);
         gl.vertexAttribPointer(normalLocation, size, type, normalize, stride, offset);
       }
-
 
       gl.enableVertexAttribArray(positionLocation);
 

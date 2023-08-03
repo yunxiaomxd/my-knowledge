@@ -1,0 +1,1 @@
+export { default as TextMark } from './textMark';
