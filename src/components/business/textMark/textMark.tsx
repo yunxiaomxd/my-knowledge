@@ -1,13 +1,12 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
-const text = `我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁是谁我
+const text = `我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁是谁我我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁是谁我
 我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁
 我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁
 我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁`;
 
 interface IPosition {
   x: number;
-  y: number;
 }
 
 interface ITextRelationShipItem {
@@ -16,6 +15,8 @@ interface ITextRelationShipItem {
   level: number;
   text: string;
   id: string | number;
+  originKeyIndex: number;
+  targetKeyIndex: number;
 }
 
 interface ITextItem {
@@ -25,8 +26,13 @@ interface ITextItem {
   relationShips: ITextRelationShipItem[];
 }
 
+const perHeight = 50;
+
 const TextMark = () => {
   const moveRef = useRef<Boolean>();
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const timerRef = useRef<number>(0);
+  const [scrollWidth, setScrollWidth] = useState(0);
   const [textLine, setTextLine] = useState<ITextItem[]>(text.split('\n').map((v) => {
     return {
       text: v,
@@ -49,11 +55,18 @@ const TextMark = () => {
       const start = nodes[s] as HTMLSpanElement;
       const end = nodes[e] as HTMLSpanElement;
 
-      const nodeStart = start.offsetLeft;
-      const nodeEnd = end.offsetLeft + end.offsetWidth;
+      const nodeStart = start.offsetLeft - 40;
+      const nodeEnd = end.offsetLeft + end.offsetWidth - 40;
+
+      let level = 1;
+      const list = textItem.relationShips.filter((v) => v.originKeyIndex === index || v.targetKeyIndex === index).sort((a, b) => b.level - a.level);
+
+      if (list.length > 0) {
+        level = list[0].level + 1;
+      }
 
       const x = (nodeStart + nodeEnd) / 2;
-      const y = 100;
+      const y = perHeight * level;
 
       setTextLine((list) => {
         return list.map((item, i) => {
@@ -65,9 +78,11 @@ const TextMark = () => {
                 {
                   s: { x, y },
                   e: { x, y },
-                  level: 0,
+                  level,
                   text: '归类处理',
                   id: Math.random(),
+                  originKeyIndex: index,
+                  targetKeyIndex: -1,
                 }
               ],
             }
@@ -83,8 +98,29 @@ const TextMark = () => {
     selectionRef.current = { element: e.target, row };
   }
 
-  const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>, row: number) => {
+  const handleMouseUp = (e: React.MouseEvent<HTMLSpanElement>, row: number) => {
     if (moveRef.current) {
+      const target = e.target as HTMLSpanElement;
+      const keyIndex = target.getAttribute('data-index');
+      const selected = target.getAttribute('data-selected');
+      if (selected && keyIndex != null) {
+        setTextLine((list) => {
+          return list.map((item, i) => {
+            if (i === row) {
+              return {
+                ...item,
+                relationShips: item.relationShips.map((ship, index) => {
+                  if (index === item.relationShips.length - 1) {
+                    return { ...ship, targetKeyIndex: +keyIndex };
+                  }
+                  return ship;
+                })
+              }
+            }
+            return item;
+          });
+        });
+      }
       moveRef.current = false;
       return;
     }
@@ -99,15 +135,15 @@ const TextMark = () => {
       const nodes = Array.from(container.childNodes);
       const startIndex = nodes.indexOf(startEqual ? start.element : selection!.anchorNode?.parentElement);
       const endIndex = nodes.indexOf(end);
-      setTextLine((value) => {
-        return value.map((item, index) => {
-          if (row === index) {
-            item.keys.push({ s: startIndex, e: endIndex });
-            return { ...item };
-          }
-          return item;
-        });
+
+      const newTextLine = textLine.map((item, index) => {
+        if (row === index) {
+          return { ...item, keys: [...item.keys, { s: startIndex, e: endIndex }] };
+        }
+        return item;
       });
+
+      setTextLine(newTextLine);
       selectionRef.current = null;
     }
   }
@@ -128,7 +164,7 @@ const TextMark = () => {
             ...item,
             relationShips: item.relationShips.map((ship, index) => {
               if (index === item.relationShips.length - 1) {
-                return { ...ship, e: { x: e.clientX - boundingRect.x + target.scrollLeft, y: ship.e.y } }
+                return { ...ship, e: { x: e.clientX - boundingRect.x + target.scrollLeft - 40, y: perHeight * ship.level } }
               }
               return ship;
             })
@@ -139,78 +175,132 @@ const TextMark = () => {
     });
   }
 
+  const edgeAnimation = (type: string) => {
+    const ele = containerRef.current!;
+    if (type === '1') {
+      if (ele.scrollLeft + ele.offsetWidth < ele.scrollWidth) {
+        ele.scrollLeft = ele.scrollLeft + 10;
+      } else {
+        handleEdgeLeave();
+        return;
+      }
+    } 
+    if (type === '2') {
+      if (ele.scrollLeft > 0) {
+        ele.scrollLeft = ele.scrollLeft - 10;
+      } else {
+        handleEdgeLeave();
+        return;
+      }
+    }
+    timerRef.current = requestAnimationFrame(() => {
+      edgeAnimation(type);
+    });
+  }
+
+  const handleEdgeEnter = (type: string) => {
+    edgeAnimation(type);
+  }
+
+  const handleEdgeLeave = () => {
+    cancelAnimationFrame(timerRef.current);
+  }
+
+  useEffect(() => {
+    containerRef.current && setScrollWidth(containerRef.current.scrollWidth);
+  }, [containerRef.current]);
+
   const renderSvg = (list: ITextRelationShipItem[]) => {
-    if (list.length === 0) {
+    if (list.length === 0 || !containerRef.current) {
       return null;
     }
+
+    let max = 1;
+    list.forEach((v) => {
+      if (v.level > max) {
+        max = v.level;
+      }
+    });
+
+    const svgHeight = max * perHeight;
+
     return (
-      <div>
+      <svg width={scrollWidth} height={max * perHeight} xmlns="http://www.w3.org/2000/svg" version="1.1">
         {
           list.map((v) => {
             const startX = v.s.x;
-            const startY = v.s.y;
-
             const endX = v.e.x;
-            const endY = v.e.y;
 
-            const rectLeftX = (startX + endX) / 2 - 50;
-            const rectRightX = (startX + endX) / 2 + 50;
-            const rectCenterY = (v.level + 1) * 25;
+            const rectLeftX = (startX + endX) / 2 - perHeight;
+            const rectRightX = (startX + endX) / 2 + perHeight;
+            const rectCenterY = (max - v.level) * perHeight + 25;
 
             const rectWidth = rectRightX - rectLeftX;
             const rectHeight = 32;
             const rectY = rectCenterY - rectHeight / 2;
 
             return (
-              <svg key={v.id} width="100%" height="100" xmlns="http://www.w3.org/2000/svg" version="1.1">
-                <line x1={startX} y1={startY} x2={rectLeftX} y2={rectCenterY} style={{ stroke: 'rgb(255,0,0)', strokeWidth: 2 }} />
+              <g key={v.id}>
+                <polyline points={`${startX},${svgHeight} ${startX},${rectCenterY} ${rectLeftX},${rectCenterY}`} style={{ fill: 'transparent', stroke: 'rgb(255,0,0)', strokeWidth: 2 }} />
                 <foreignObject width={rectWidth} height={rectHeight} x={rectLeftX} y={rectY}>
                   <div
-                    style={{ width: '100%', height: '100%', background:'rgba(0,0,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ width: '100%', height: '100%', background:'#00c4ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
                     {v.text}
                   </div>
                 </foreignObject>
-                <line x1={rectRightX} y1={rectCenterY} x2={endX} y2={endY} style={{ stroke: 'rgb(255,0,0)', strokeWidth: 2 }} />
-              </svg>
+                <polyline points={`${rectRightX},${rectCenterY} ${endX},${rectCenterY} ${endX},${svgHeight}`} x1={rectRightX} style={{ fill: 'transparent', stroke: 'rgb(255,0,0)', strokeWidth: 2 }} />
+              </g>
             )
           })
         }
-      </div>
+      </svg>
     )
   }
 
   return (
-    <div style={{ padding: 40 }}>
-    {
-      textLine.map((v, row) => {
-        const length = v.text.length;
-        return (
-          <div key={v.id} style={{ lineHeight: 1 }} onMouseMove={(e) => handleMouseMove(e, row)} onMouseUp={() => moveRef.current = false}>
-            {renderSvg(v.relationShips)}
-            <div
-              tabIndex={0}
-              onMouseDown={(e) => handleMouseDown(e, row)}
-              onMouseUp={(e) => handleMouseUp(e, row)}
-              style={{ position: 'relative' }}
-            >
-              {Array.from({ length }).map((n, col) => {
-                const index = v.keys.findIndex((item) => col <= item.e && col >= item.s);
-                const style: React.CSSProperties = {};
-                let selected = '';
-                if (index > -1) {
-                  style.background = '#29e';
-                  style.color = '#fff';
-                  style.cursor = 'pointer';
-                  selected = 'true';
-                }
-                return <span data-selected={selected} data-index={index} key={`${row}_${col}`} style={{ ...style }}>{v.text.charAt(col)}</span>;
-              })}
-            </div>
-          </div>
-        )
-      })
-    }
+    <div style={{ boxSizing: 'border-box', width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
+      <div
+        onMouseEnter={() => handleEdgeEnter('2')}
+        onMouseLeave={() => handleEdgeLeave()}
+        style={{ position: 'absolute', top: 0, left: 0, width: 40, height: '100%', zIndex: 1 }}
+      />
+      <div ref={containerRef} style={{ padding: '40px 0', boxSizing: 'border-box', overflow: 'auto', whiteSpace: 'nowrap', width: '100%', height: '100%', position: 'relative' }}>
+        {
+          textLine.map((v, row) => {
+            const length = v.text.length;
+            return (
+              <div key={v.id} style={{ lineHeight: 1, width: 'max-content', padding: '0 40px' }} onMouseMove={(e) => handleMouseMove(e, row)} onMouseUp={() => moveRef.current = false}>
+                {renderSvg(v.relationShips)}
+                <div
+                  tabIndex={0}
+                  onMouseDown={(e) => handleMouseDown(e, row)}
+                  onMouseUp={(e) => handleMouseUp(e, row)}
+                >
+                  {Array.from({ length }).map((n, col) => {
+                    const index = v.keys.findIndex((item) => col <= item.e && col >= item.s);
+
+                    const style: React.CSSProperties = {};
+                    let selected = '';
+                    if (index > -1) {
+                      style.background = '#29e';
+                      style.color = '#fff';
+                      style.cursor = 'pointer';
+                      selected = 'true';
+                    }
+                    return <span data-selected={selected} data-index={index} key={`${row}_${col}`} style={{ ...style }}>{v.text.charAt(col)}</span>;
+                  })}
+                </div>
+              </div>
+            )
+          })
+        }
+      </div>
+      <div
+        onMouseEnter={() => handleEdgeEnter('1')}
+        onMouseLeave={() => handleEdgeLeave()}
+        style={{ position: 'absolute', top: 0, right: 0, width: 40, height: '100%', zIndex: 1 }}
+      />
     </div>
   );
 };
