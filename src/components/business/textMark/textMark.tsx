@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const text = `我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁是谁我我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁是谁我
 我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁我是谁
@@ -14,25 +14,36 @@ interface ITextRelationShipItem {
   e: IPosition;
   level: number;
   text: string;
-  id: string | number;
-  originKeyIndex: number;
-  targetKeyIndex: number;
+  id: string;
+  originKey: string;
+  targetKey: string;
+}
+
+interface ITextKeyItem {
+  s: number;
+  e: number;
+  text: string;
+  type?: string;
+  id: string;
 }
 
 interface ITextItem {
   text: string;
   id: string;
-  keys: { s: number; e: number }[];
+  keys: ITextKeyItem[];
   relationShips: ITextRelationShipItem[];
 }
 
 const perHeight = 50;
+const padding = 40;
 
 const TextMark = () => {
+  const stopPropagationRef = useRef<Boolean>();
   const moveRef = useRef<Boolean>();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const timerRef = useRef<number>(0);
   const [scrollWidth, setScrollWidth] = useState(0);
+  const [keyCount, setKeyCount] = useState(0);
   const [textLine, setTextLine] = useState<ITextItem[]>(text.split('\n').map((v) => {
     return {
       text: v,
@@ -43,23 +54,24 @@ const TextMark = () => {
   }));
   const selectionRef = useRef<any>();
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>, row: number) => {
+  const handleMouseStartDraw = (e: React.MouseEvent<HTMLDivElement | HTMLSpanElement>, row: number) => {
     const ele = e.target as HTMLSpanElement;
-    if (ele.getAttribute('data-selected')) {
-      const index = +ele.getAttribute('data-index')!;
+    const currentKey = ele.getAttribute('data-key');
+
+    if (e.button === 2) {
+      return;
+    }
+
+    if (currentKey) {
       const textItem = textLine[row];
-      const key = textItem.keys[index];
-      const { s, e } = key;
 
-      const nodes = Array.from(ele.parentElement!.childNodes);
-      const start = nodes[s] as HTMLSpanElement;
-      const end = nodes[e] as HTMLSpanElement;
+      const parentElement = ele.parentElement as HTMLDivElement;
 
-      const nodeStart = start.offsetLeft - 40;
-      const nodeEnd = end.offsetLeft + end.offsetWidth - 40;
+      const nodeStart = parentElement.offsetLeft;
+      const nodeEnd = parentElement.offsetLeft + parentElement.offsetWidth;
 
       let level = 1;
-      const list = textItem.relationShips.filter((v) => v.originKeyIndex === index || v.targetKeyIndex === index).sort((a, b) => b.level - a.level);
+      const list = textItem.relationShips.filter((v) => v.originKey === currentKey || v.targetKey === currentKey).sort((a, b) => b.level - a.level);
 
       if (list.length > 0) {
         level = list[0].level + 1;
@@ -80,9 +92,9 @@ const TextMark = () => {
                   e: { x, y },
                   level,
                   text: '归类处理',
-                  id: Math.random(),
-                  originKeyIndex: index,
-                  targetKeyIndex: -1,
+                  id: Math.random().toString(),
+                  originKey: currentKey,
+                  targetKey: '',
                 }
               ],
             }
@@ -98,29 +110,31 @@ const TextMark = () => {
     selectionRef.current = { element: e.target, row };
   }
 
-  const handleMouseUp = (e: React.MouseEvent<HTMLSpanElement>, row: number) => {
+  /**
+   * 停止绘制
+   */
+  const handleMouseEndDraw = (e: React.MouseEvent<HTMLSpanElement>, row: number) => {
+    stopPropagationRef.current = true;
+
     if (moveRef.current) {
       const target = e.target as HTMLSpanElement;
-      const keyIndex = target.getAttribute('data-index');
-      const selected = target.getAttribute('data-selected');
-      if (selected && keyIndex != null) {
-        setTextLine((list) => {
-          return list.map((item, i) => {
-            if (i === row) {
-              return {
-                ...item,
-                relationShips: item.relationShips.map((ship, index) => {
-                  if (index === item.relationShips.length - 1) {
-                    return { ...ship, targetKeyIndex: +keyIndex };
-                  }
-                  return ship;
+      const targetKey = target.getAttribute('data-key');
+
+      setTextLine((list) => {
+        return list.map((item, i) => {
+          if (i === row) {
+            return {
+              ...item,
+              relationShips: targetKey ?
+                item.relationShips.map((ship, index) => {
+                  return index === item.relationShips.length - 1 ? { ...ship, targetKey } : ship;
                 })
-              }
+                : item.relationShips.filter((ships, index, arr) => index !== arr.length - 1)
             }
-            return item;
-          });
+          }
+          return item;
         });
-      }
+      });
       moveRef.current = false;
       return;
     }
@@ -133,12 +147,31 @@ const TextMark = () => {
       const startEqual = selection!.anchorNode?.parentElement === start.element;
       const container = end.parentElement!;
       const nodes = Array.from(container.childNodes);
-      const startIndex = nodes.indexOf(startEqual ? start.element : selection!.anchorNode?.parentElement);
-      const endIndex = nodes.indexOf(end);
+      let startIndex = nodes.indexOf(startEqual ? start.element : selection!.anchorNode?.parentElement);
+      let endIndex = nodes.indexOf(end);
+
+      if (startIndex > endIndex) {
+        const tempIndex = startIndex;
+        startIndex = endIndex;
+        endIndex = tempIndex;
+      }
+
+      const textLineItem = textLine[row];
+      const { keys } = textLineItem;
+
+      const index = keys.findIndex((v) => {
+        return (startIndex >= v.s && startIndex <= v.e) || (endIndex >= v.s && endIndex <= v.e);
+      });
+
+      if (index > -1) {
+        selection?.empty();
+        return;
+      }
 
       const newTextLine = textLine.map((item, index) => {
         if (row === index) {
-          return { ...item, keys: [...item.keys, { s: startIndex, e: endIndex }] };
+          const res = { ...item, keys: [...item.keys, { s: startIndex, e: endIndex, text: '实体名称', id: Math.random().toString() }] };
+          return res;
         }
         return item;
       });
@@ -148,7 +181,62 @@ const TextMark = () => {
     }
   }
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>, row: number) => {
+  /**
+   * 中间空白区域停止绘制 
+   */
+  const handleMouseEndDrawInSpace = (e: React.MouseEvent<HTMLDivElement>, row: number) => {
+    moveRef.current = false;
+    if (stopPropagationRef.current) {
+      stopPropagationRef.current = false;
+      return;
+    }
+
+    setTextLine((list) => {
+      return list.map((item, i) => {
+        if (i === row) {
+          return {
+            ...item,
+            relationShips: item.relationShips.filter((ships, index, arr) => index !== arr.length - 1)
+          }
+        }
+        return item;
+      });
+    });
+    // const target = e.currentTarget;
+    // const rect = target.getBoundingClientRect();
+    // const x = e.clientX - rect.x;
+
+    // // 遍历 span
+    // const spanList = Array.from(target.querySelectorAll('span'));
+    // for (let i = 0; i < spanList.length; i++) {
+    //   const span = spanList[i];
+    //   if (x > span.offsetLeft && x < (span.offsetLeft + span.offsetWidth)) {
+    //     const keyIndex = span.getAttribute('data-index');
+    //     const selected = span.getAttribute('data-selected');
+
+    //     setTextLine((list) => {
+    //       return list.map((item, i) => {
+    //         if (i === row) {
+    //           return {
+    //             ...item,
+    //             relationShips: (selected && keyIndex != null) ?
+    //               item.relationShips.map((ship, index) => {
+    //                 return index === item.relationShips.length - 1 ? { ...ship, targetKey: +keyIndex } : ship;
+    //               })
+    //               : item.relationShips.filter((ships, index, arr) => index !== arr.length - 1)
+    //           }
+    //         }
+    //         return item;
+    //       });
+    //     });
+    //   }
+    // }
+  }
+
+  /**
+   * 绘制
+   */
+  const handleMouseDraw = (e: React.MouseEvent<HTMLDivElement>, row: number) => {
     if (!moveRef.current) {
       return;
     }
@@ -164,7 +252,7 @@ const TextMark = () => {
             ...item,
             relationShips: item.relationShips.map((ship, index) => {
               if (index === item.relationShips.length - 1) {
-                return { ...ship, e: { x: e.clientX - boundingRect.x + target.scrollLeft - 40, y: perHeight * ship.level } }
+                return { ...ship, e: { x: e.clientX - boundingRect.x + target.scrollLeft - padding, y: perHeight * ship.level } }
               }
               return ship;
             })
@@ -175,6 +263,9 @@ const TextMark = () => {
     });
   }
 
+  /**
+   * 边缘动画
+   */
   const edgeAnimation = (type: string) => {
     const ele = containerRef.current!;
     if (type === '1') {
@@ -199,6 +290,9 @@ const TextMark = () => {
   }
 
   const handleEdgeEnter = (type: string) => {
+    if (!moveRef.current) {
+      return;
+    }
     edgeAnimation(type);
   }
 
@@ -210,6 +304,13 @@ const TextMark = () => {
     containerRef.current && setScrollWidth(containerRef.current.scrollWidth);
   }, [containerRef.current]);
 
+  useLayoutEffect(() => {
+    setKeyCount((count) => count += 1);
+  }, []);
+
+  /**
+   * 渲染实体关系的 svg
+   */
   const renderSvg = (list: ITextRelationShipItem[]) => {
     if (list.length === 0 || !containerRef.current) {
       return null;
@@ -244,7 +345,7 @@ const TextMark = () => {
                 <polyline points={`${startX},${svgHeight} ${startX},${rectCenterY} ${rectLeftX},${rectCenterY}`} style={{ fill: 'transparent', stroke: 'rgb(255,0,0)', strokeWidth: 2 }} />
                 <foreignObject width={rectWidth} height={rectHeight} x={rectLeftX} y={rectY}>
                   <div
-                    style={{ width: '100%', height: '100%', background:'#00c4ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ width: '100%', height: '100%', background:'#00c4ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}
                   >
                     {v.text}
                   </div>
@@ -258,6 +359,49 @@ const TextMark = () => {
     )
   }
 
+  /**
+   * 渲染实体
+   */
+  const renderKey = (list: ITextKeyItem[], row: number) => {
+    if (!containerRef.current) {
+      return null;
+    }
+
+    const children = Array.from(containerRef.current.childNodes);
+    const currentChild = children[row] as HTMLDivElement;
+    if (!currentChild) {
+      return null;
+    }
+
+    const spanList = Array.from(currentChild.querySelector('.text-container')!.querySelectorAll('span'));
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', position: 'relative', height: 28 }}>
+        {
+          list.map((v) => {
+            const startSpan = spanList[v.s];
+            const endSpan = spanList[v.e];
+
+            const startX = startSpan.offsetLeft - padding;
+            const endX = endSpan.offsetLeft + endSpan.offsetWidth - padding;
+
+            const width = endX - startX;
+
+            return (
+              <div key={v.id} style={{ width, position: 'absolute', left: startX, textAlign: 'center' }}>
+                <span
+                  onMouseDown={(e) => handleMouseStartDraw(e, row)}
+                  onMouseUp={(e) => handleMouseEndDraw(e, row)}
+                  style={{ cursor: 'pointer', userSelect: 'none' }}
+                  data-key={v.id}
+                >{v.text}</span>
+              </div>
+            )
+          })
+        }
+      </div>
+    )
+  }
+
   return (
     <div style={{ boxSizing: 'border-box', width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
       <div
@@ -265,17 +409,27 @@ const TextMark = () => {
         onMouseLeave={() => handleEdgeLeave()}
         style={{ position: 'absolute', top: 0, left: 0, width: 40, height: '100%', zIndex: 1 }}
       />
-      <div ref={containerRef} style={{ padding: '40px 0', boxSizing: 'border-box', overflow: 'auto', whiteSpace: 'nowrap', width: '100%', height: '100%', position: 'relative' }}>
+      <div
+        ref={containerRef}
+        style={{ padding: `${padding}px 0`, boxSizing: 'border-box', overflow: 'auto', whiteSpace: 'nowrap', width: '100%', height: '100%', position: 'relative' }}
+      >
         {
           textLine.map((v, row) => {
             const length = v.text.length;
             return (
-              <div key={v.id} style={{ lineHeight: 1, width: 'max-content', padding: '0 40px' }} onMouseMove={(e) => handleMouseMove(e, row)} onMouseUp={() => moveRef.current = false}>
+              <div
+                key={v.id}
+                style={{ lineHeight: 1, width: 'max-content', padding: `0 ${padding}px` }}
+                onMouseMove={(e) => handleMouseDraw(e, row)}
+                onMouseUp={(e) => handleMouseEndDrawInSpace(e, row)}
+              >
                 {renderSvg(v.relationShips)}
+                {keyCount > 0 && renderKey(v.keys, row)}
                 <div
                   tabIndex={0}
-                  onMouseDown={(e) => handleMouseDown(e, row)}
-                  onMouseUp={(e) => handleMouseUp(e, row)}
+                  onMouseDown={(e) => handleMouseStartDraw(e, row)}
+                  onMouseUp={(e) => handleMouseEndDraw(e, row)}
+                  className="text-container"
                 >
                   {Array.from({ length }).map((n, col) => {
                     const index = v.keys.findIndex((item) => col <= item.e && col >= item.s);
