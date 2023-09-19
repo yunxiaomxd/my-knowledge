@@ -61,6 +61,13 @@ const TextMark = () => {
     if (e.button === 2) {
       return;
     }
+    
+    // 点击前查看是否已存在选中，已选中的不允许操作
+    const selection = window.getSelection();
+    if (selection && selection.toString()) {
+      selection.empty();
+      return;
+    }
 
     if (currentKey) {
       const textItem = textLine[row];
@@ -107,6 +114,7 @@ const TextMark = () => {
 
       return;
     }
+
     selectionRef.current = { element: e.target, row };
   }
 
@@ -143,7 +151,8 @@ const TextMark = () => {
     const text = selection?.toString();
     const start = selectionRef.current;
     const end = selection!.focusNode?.parentElement;
-    if (text && start && start.element && end) {
+
+    if (selection && text && start && start.element && end && start.row === row) {
       const startEqual = selection!.anchorNode?.parentElement === start.element;
       const container = end.parentElement!;
       const nodes = Array.from(container.childNodes);
@@ -177,8 +186,9 @@ const TextMark = () => {
       });
 
       setTextLine(newTextLine);
-      selectionRef.current = null;
     }
+
+    selectionRef.current = null;
   }
 
   /**
@@ -202,35 +212,6 @@ const TextMark = () => {
         return item;
       });
     });
-    // const target = e.currentTarget;
-    // const rect = target.getBoundingClientRect();
-    // const x = e.clientX - rect.x;
-
-    // // 遍历 span
-    // const spanList = Array.from(target.querySelectorAll('span'));
-    // for (let i = 0; i < spanList.length; i++) {
-    //   const span = spanList[i];
-    //   if (x > span.offsetLeft && x < (span.offsetLeft + span.offsetWidth)) {
-    //     const keyIndex = span.getAttribute('data-index');
-    //     const selected = span.getAttribute('data-selected');
-
-    //     setTextLine((list) => {
-    //       return list.map((item, i) => {
-    //         if (i === row) {
-    //           return {
-    //             ...item,
-    //             relationShips: (selected && keyIndex != null) ?
-    //               item.relationShips.map((ship, index) => {
-    //                 return index === item.relationShips.length - 1 ? { ...ship, targetKey: +keyIndex } : ship;
-    //               })
-    //               : item.relationShips.filter((ships, index, arr) => index !== arr.length - 1)
-    //           }
-    //         }
-    //         return item;
-    //       });
-    //     });
-    //   }
-    // }
   }
 
   /**

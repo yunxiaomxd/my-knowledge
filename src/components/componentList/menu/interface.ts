@@ -12,6 +12,7 @@ export interface IMenuContainerStyledProps {
  */
 export interface IMenuItemStyledProps {
   level: number;
+  selected: boolean;
 }
 
 /**
@@ -22,6 +23,7 @@ export interface IMenu extends IMenuContainerStyledProps {
   mode?: 'normal' | 'ghost';
   expand?: boolean;
   onClick?: (item: IMenuItem) => void;
+  activeKey?: string;
 }
 
 export interface IMenuItem {

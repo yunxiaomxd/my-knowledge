@@ -6,7 +6,7 @@ import { IMenu, IMenuItem } from "./interface";
 import { Container, ContainerGhost, ContainerSlide, MenuExpand, MenuGroup, MenuGroupContent, MenuItem } from "./styled";
 
 const Menu = (props: IMenu) => {
-  const { data, mode = MenuMode.Normal, expand = false } = props;
+  const { data, mode = MenuMode.Normal, expand = false, activeKey } = props;
   const [open, setOpen] = useState(true);
   const [ghostOpen, setGhostOpen] = useState(false);
   
@@ -56,6 +56,7 @@ const Menu = (props: IMenu) => {
           onClick={() => handleItemClick(v)}
           key={v.value}
           level={index}
+          selected={activeKey === v.value}
         >
           <span>{v.label}</span>
         </MenuItem>

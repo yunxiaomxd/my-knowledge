@@ -44,6 +44,7 @@ function App() {
         expand
         mode="ghost"
         onClick={(item) => setKey(item.value)}
+        activeKey={key}
       />
       <div style={{ flex: 1, overflow: 'hidden' }}>
         {render()}

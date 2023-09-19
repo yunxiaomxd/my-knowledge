@@ -1,74 +1,47 @@
-export default function plane(width: number, height: number, offset = [0, 0, 0], widthSegments = 1, heightSegments = 1) {
-  const width_half = width / 2;
-  const height_half = height / 2;
+export default function plane(width: number, height: number, stepWidth: number, stepHeight: number) {
+  const widthSegments = Math.floor(width / stepWidth);
+  const heightSegments = Math.floor(height / stepHeight);
 
-  const gridX = Math.floor( widthSegments );
-  const gridY = Math.floor( heightSegments );
+  const segmentWidth = width / widthSegments;
+  const segmentHeight = height / heightSegments;
 
-  const gridX1 = gridX + 1;
-  const gridY1 = gridY + 1;
+  const positions = [];
+  const normals = [];
+  const indices = [];
 
-  const segment_width = width / gridX;
-  const segment_height = height / gridY;
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
 
-  const positions = [
-    -500, 0, -1500,
-    500, 0, -1500,
-    -500, 0, -500,
-    500, 0, -500,
-  ];
+  let index = 0;
 
-  const indices = [
-    0, 2, 1,
-    1, 2, 3,
-  ];
+  // 生成顶点、法线和索引
+  for (let y = -halfHeight; y < halfHeight; y += segmentHeight) {
+    for (let x = -halfWidth; x < halfWidth; x += segmentWidth) {
+      // 生成当前顶点的坐标，并进行小数点处理
+      const vertexX = parseFloat(x.toFixed(2));
+      const vertexY = parseFloat(y.toFixed(2));
+      positions.push(vertexX, vertexY, 0);
 
-  const normals = [
-    0, 1, 0,
-    0, 1, 0,
-    0, 1, 0,
-    0, 1, 0,
-  ]
+      // 生成当前顶点的法线
+      normals.push(0, 0, 1);
 
-  // const indices = [];
-  // const positions = [];
-  // const normals = [];
-  // const uvs = [];
+      // 生成索引
+      const rowLength = widthSegments;
+      const currentRow = Math.floor(index / widthSegments);
+      const nextRow = currentRow + 1;
+      const currentCol = index % widthSegments;
 
-  // for ( let iy = 0; iy < gridY1; iy ++ ) {
+      // 生成当前顶点和下一行顶点之间的三角形索引
+      if (currentCol < rowLength && nextRow < heightSegments) {
+        const segmentIndex = index / (segmentWidth / segmentHeight);
+        indices.push(segmentIndex, segmentIndex + 1, segmentIndex + widthSegments);
+        indices.push(segmentIndex + 1, segmentIndex + widthSegments + 1, segmentIndex + widthSegments);
+      }
 
-  //   const z = iy * segment_height - height_half;
+      index++;
+    }
+  }
 
-  //   for ( let ix = 0; ix < gridX1; ix ++ ) {
-
-  //     const x = ix * segment_width - width_half + offset[0];
-
-  //     positions.push(x, 0, -z);
-
-  //     normals.push(0, 1, 0);
-
-  //     uvs.push( ix / gridX );
-  //     uvs.push( 1 - ( iy / gridY ) );
-
-  //   }
-
-  // }
-
-  // for ( let iy = 0; iy < gridY; iy ++ ) {
-
-  //   for ( let ix = 0; ix < gridX; ix ++ ) {
-
-  //     const a = ix + gridX1 * iy;
-  //     const b = ix + gridX1 * ( iy + 1 );
-  //     const c = ( ix + 1 ) + gridX1 * ( iy + 1 );
-  //     const d = ( ix + 1 ) + gridX1 * iy;
-
-  //     indices.push( a, b, d );
-  //     indices.push( b, c, d );
-
-  //   }
-
-  // }
 
   return {
     positions,

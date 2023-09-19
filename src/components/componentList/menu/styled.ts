@@ -42,7 +42,7 @@ export const MenuExpand = styled.div`
 
 export const MenuGroup = styled.div``;
 
-export const MenuGroupContent = styled.div<IMenuItemStyledProps>`
+export const MenuGroupContent = styled.div<Omit<IMenuItemStyledProps, 'selected'>>`
   height: ${menuItemMiddleHeight}px;
   padding-left: ${(props) => (props.level || 1) * menuSpace}px;
   ${rule.verticalCenter}
@@ -64,10 +64,14 @@ export const MenuItem = styled.div<IMenuItemStyledProps>`
   cursor: pointer;
   ${rule.verticalCenter}
 
-  &:hover {
-    background-color: var(--menu-item-hover-bg);
+  ${(props) => props.selected ? `
+    background-color: var(--menu-item-selected-bg);
     color: var(--menu-item-text-hover-color);
-  }
+  ` : `
+    &:hover {
+      background-color: var(--menu-item-hover-bg);
+    }
+  `}
   
   span {
     display: block;

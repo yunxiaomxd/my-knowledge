@@ -3,7 +3,8 @@
 :root[theme='light'] {
   --menu-item-text-color: #{$blue-6};
   --menu-item-bg: #{$gray-1};
-  --menu-item-hover-bg: #{$blue-5};
+  --menu-item-hover-bg: #{$blue-2};
+  --menu-item-selected-bg: #{$blue-5};
   --menu-item-text-hover-color: #{$gray-1};
 
   --button-bg: #{$blue-5};
