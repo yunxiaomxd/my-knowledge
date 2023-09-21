@@ -105,6 +105,7 @@ export function lineNoise() {
   return {
     positions,
     indices: [],
+    normals: [],
     primitiveType: 'LINE_STRIP',
   }
 }

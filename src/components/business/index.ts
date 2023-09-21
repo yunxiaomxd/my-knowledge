@@ -1,5 +1,5 @@
 import { IMenuItem } from '../componentList';
-import { Geometry, GeometryPBR } from './geometry';
+import { Geometry, GeometryPBR, GeometryShadow } from './geometry';
 import { Theme } from './theme';
 import { X6V } from './antChart';
 import { SvgEditor } from './svgEditor';
@@ -26,6 +26,10 @@ export const BusinessList: IMenuItem = {
     label: 'geometry(webgl) - pbr',
     value: 'pbr',
     component: GeometryPBR,
+  }, {
+    label: 'geometry(webgl) - shadow',
+    value: 'shadow',
+    component: GeometryShadow,
   }, {
     label: 'svg',
     value: 'svg',

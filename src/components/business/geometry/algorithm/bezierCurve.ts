@@ -32,6 +32,7 @@ export default function bezierCurve() {
   return {
     positions,
     indices: [],
+    normals: [],
     primitiveType: 'LINE_STRIP',
   }
 }

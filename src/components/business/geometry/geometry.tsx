@@ -4,6 +4,7 @@ import { Container, Content, Menu, MenuItem, Panel, PanelContent, PanelTitle } f
 import { torus, bezierCurve, lineNoise, surfaceNoise, cubic, plane, sphere } from "./algorithm";
 import vertex from './shader/blinnPhong/vertex.glsl?raw';
 import fragment from './shader/blinnPhong/fragment.glsl?raw';
+import { IBufferType, IGeometry, IRenderGeometry } from "./interface";
 
 enum EGeometry {
   Torus,
@@ -24,9 +25,6 @@ const geometryMap = {
   [EGeometry.Sphere]: sphere([0, 0, ])
 }
 
-interface IRenderGeometry { positionBuffer: WebGLBuffer; normalBuffer?: WebGLBuffer; indexBuffer?: WebGLBuffer; primitiveType: string; positionCount: number; indexCount?: number; };
-
-interface IGeometry { positions: number[]; indices: number[]; normals?: number[]; primitiveType: string };
 
 class AnimateGL {
   ref: React.RefObject<HTMLCanvasElement> | null = null;
@@ -46,6 +44,12 @@ class AnimateGL {
   position: number[] = [0, 0, 500];
   target: number[] = [0, 0, 0];
   up = [0, 1, 0];
+
+  buffer: IBufferType = {
+    vertexBuffer: null,
+    normalBuffer: null,
+    indexBuffer: null,
+  }
 
   material = {
     ambient: [1.0, 0.5, 0.31],
@@ -89,6 +93,9 @@ class AnimateGL {
     this.positionLocation = positionLocation;
     this.normalLocation = normalLocation;
 
+    this.buffer.vertexBuffer = gl.createBuffer();
+    this.buffer.normalBuffer = gl.createBuffer();
+    this.buffer.indexBuffer = gl.createBuffer();
   }
 
   setRotateX = (value: number) => {
@@ -109,37 +116,34 @@ class AnimateGL {
 
     const { positions, indices, primitiveType, normals } = geometry;
 
-    const positionBuffer = gl.createBuffer() as WebGLBuffer;
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-
-    list.push({ positionBuffer, primitiveType: primitiveType, positionCount: positions.length / 3 });
-    if (indices.length > 0) {
-      const indexBuffer = gl.createBuffer() as WebGLBuffer;
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-
-      list[list.length - 1].indexBuffer = indexBuffer;
-      list[list.length - 1].indexCount = indices.length;
-    }
-
-    if (normals) {
-      const normalBuffer = gl.createBuffer() as WebGLBuffer;
-      gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
-      list[list.length - 1].normalBuffer = normalBuffer;
-    }
+    list.push({ positions, indices, primitiveType, normals, id: Math.random().toString() });
   }
 
   render = () => {
-    const { list, gl, program, positionLocation, normalLocation, material, light, rotate } = this;
+    const { list, gl, program, positionLocation, normalLocation, material, light, rotate, buffer } = this;
     if (!gl || !program) return;
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.enable(gl.CULL_FACE);
 
-    
+    const vertex = [], normals = [], indicies = [];
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      vertex.push(...item.positions);
+      normals.push(...item.normals);
+      indicies.push(...item.indices);
+    }
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer.vertexBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertex), gl.STATIC_DRAW);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer.normalBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer.indexBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indicies), gl.STATIC_DRAW);
+
     let directionMatrix = m4.identify();
     directionMatrix = m4.lookAt(light.position, this.target, this.up);
 
@@ -168,62 +172,52 @@ class AnimateGL {
     const eyeLocation = gl.getUniformLocation(program, 'u_eye');
     gl.uniform3fv(eyeLocation, new Float32Array(this.position));
 
-    const mvpLocation = gl.getUniformLocation(program, "u_mvp");
-
     const aspect = 933 / 880;
     const zNear = 1;
     const zFar = 2000;
 
     var fieldOfViewRadians = degToRad(60);
 
-    const projectionMatrix = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
-    const cameraMatrix = m4.lookAt(this.position, this.target, this.up);
-    const cameraInverseMatrix = m4.inverse(cameraMatrix);
-
     let modelMatrix = m4.identify();
     modelMatrix = m4.xRotate(modelMatrix, degToRad(rotate.x));
     modelMatrix = m4.yRotate(modelMatrix, degToRad(rotate.y));
     modelMatrix = m4.zRotate(modelMatrix, degToRad(rotate.z));
+    const projectionMatrix = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
+    const cameraMatrix = m4.lookAt(this.position, this.target, this.up);
+    const viewMatrix = m4.inverse(cameraMatrix);
     
-    let matrix = m4.multiply(projectionMatrix, cameraInverseMatrix);
+    let matrix = m4.multiply(projectionMatrix, viewMatrix);
     matrix = m4.multiply(matrix, modelMatrix);
 
     const modelLocation = gl.getUniformLocation(program, 'u_model');
+    const viewLocation = gl.getUniformLocation(program, 'u_view');
+    const projectionLocation = gl.getUniformLocation(program, 'u_projection');
+
+    const size = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+
+    gl.enableVertexAttribArray(positionLocation);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer.vertexBuffer);
+    gl.vertexAttribPointer(positionLocation, size, type, normalize, stride, offset);
+
+    gl.enableVertexAttribArray(normalLocation);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer.normalBuffer);
+    gl.vertexAttribPointer(normalLocation, size, type, normalize, stride, offset);
+
 
     const renderAnimate = () => {
 
-      gl.uniformMatrix4fv(mvpLocation, false, matrix);
       gl.uniformMatrix4fv(modelLocation, false, modelMatrix);
+      gl.uniformMatrix4fv(viewLocation, false, viewMatrix);
+      gl.uniformMatrix4fv(projectionLocation, false, projectionMatrix);
 
-      const size = 3;
-      const type = gl.FLOAT;
-      const normalize = false;
-      const stride = 0;
-      const offset = 0;
-
-      gl.enableVertexAttribArray(normalLocation);
-      for (let i = 0; i < list.length; i++) {
-        const { normalBuffer } = list[i];
-        gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer as WebGLBuffer);
-        gl.vertexAttribPointer(normalLocation, size, type, normalize, stride, offset);
-      }
-
-      gl.enableVertexAttribArray(positionLocation);
-
-      for (let i = 0; i < list.length; i++) {
-        const { primitiveType, positionCount, indexCount, indexBuffer, positionBuffer } = list[i];
-        const geometryPrimitiveType = (gl as any)[primitiveType];
-        if (indexCount) {
-          gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer as WebGLBuffer);
-          gl.vertexAttribPointer(positionLocation, size, type, normalize, stride, offset);
-          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer as WebGLBuffer);
-          gl.drawElements(geometryPrimitiveType, indexCount, gl.UNSIGNED_SHORT, 0);
-        } else {
-          gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer as WebGLBuffer);
-          gl.vertexAttribPointer(positionLocation, size, type, normalize, stride, offset);
-          gl.drawArrays(geometryPrimitiveType, offset, positionCount);
-        }
-      }
+      // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer.indexBuffer);
+      // gl.drawElements(gl.TRIANGLES, indicies.length, gl.UNSIGNED_SHORT, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer.vertexBuffer);
+      gl.drawArrays(gl.TRIANGLES, 0, vertex.length);
 
       // this.timer = requestAnimationFrame(renderAnimate);
     };
@@ -237,8 +231,7 @@ const Geometry = () => {
   const [instance, setInstance] = useState<AnimateGL>();
 
   const toggleGeometry = useCallback((type: EGeometry) => {
-    let geometry: IGeometry = geometryMap[type];
-    // console.log(geometry);
+    let geometry = geometryMap[type] as IGeometry;
     instance?.add(geometry as IGeometry);
     instance?.render();
   }, [instance]);
@@ -263,7 +256,7 @@ const Geometry = () => {
     if (ref.current) {
       const animateGL = new AnimateGL(ref);
       setInstance(animateGL);
-      animateGL.add(geometryMap[EGeometry.Cubic]);
+      animateGL.add(geometryMap[EGeometry.Cubic] as IGeometry);
       animateGL.render();
     }
   }, [ref]);
