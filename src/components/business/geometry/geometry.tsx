@@ -11,18 +11,19 @@ enum EGeometry {
   BezierCurves,
   LineNoise,
   Cubic,
-  Sphere
+  Sphere,
+  Plane,
 }
 
 type TMaterialField = 'ambient' | 'diffuse' | 'specular' | 'shininess';
 
-const worldWidth = 256, worldDepth = 256;
 const geometryMap = {
   [EGeometry.Torus]: torus(),
   [EGeometry.BezierCurves]: bezierCurve(),
   [EGeometry.LineNoise]: lineNoise(),
   [EGeometry.Cubic]: cubic(100, 100, 100, [0, 0, 0]),
-  [EGeometry.Sphere]: sphere([0, 0, ])
+  [EGeometry.Sphere]: sphere([0, 0, -100], 150),
+  [EGeometry.Plane]: plane(300, 300, 2, 2), 
 }
 
 
@@ -62,8 +63,8 @@ class AnimateGL {
   light = {
     position: [40, 60, 120],
     color: [1.0, 1.0, 1.0],
-    innerAngle: Math.cos(degToRad(10)),
-    outerAngle: Math.cos(degToRad(20)),
+    innerAngle: Math.cos(degToRad(40)),
+    outerAngle: Math.cos(degToRad(60)),
     direction: [],
   }
 
@@ -207,18 +208,27 @@ class AnimateGL {
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer.normalBuffer);
     gl.vertexAttribPointer(normalLocation, size, type, normalize, stride, offset);
 
-
     const renderAnimate = () => {
 
       gl.uniformMatrix4fv(modelLocation, false, modelMatrix);
       gl.uniformMatrix4fv(viewLocation, false, viewMatrix);
       gl.uniformMatrix4fv(projectionLocation, false, projectionMatrix);
 
-      // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer.indexBuffer);
-      // gl.drawElements(gl.TRIANGLES, indicies.length, gl.UNSIGNED_SHORT, 0);
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer.vertexBuffer);
-      gl.drawArrays(gl.TRIANGLES, 0, vertex.length);
+      // for (let i = 0; i < list.length; i++) {
+      //   const item = list[i];
+      //   if (item.indices.length === 0) {
+      //     gl.bindBuffer(gl.ARRAY_BUFFER, buffer.vertexBuffer);
+      //     gl.drawArrays(gl.TRIANGLES, 0, vertex.length);
+      //   } else {
+      //     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer.indexBuffer);
+      //     gl.drawElements(gl.TRIANGLES, indicies.length, gl.UNSIGNED_SHORT, 0);
+      //   }
+      // }
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer.indexBuffer);
+      gl.drawElements(gl.TRIANGLES, indicies.length, gl.UNSIGNED_SHORT, 0);
 
+      // gl.bindBuffer(gl.ARRAY_BUFFER, buffer.vertexBuffer);
+      // gl.drawArrays(gl.TRIANGLES, 0, vertex.length);
       // this.timer = requestAnimationFrame(renderAnimate);
     };
 
@@ -231,7 +241,7 @@ const Geometry = () => {
   const [instance, setInstance] = useState<AnimateGL>();
 
   const toggleGeometry = useCallback((type: EGeometry) => {
-    let geometry = geometryMap[type] as IGeometry;
+    const geometry = geometryMap[type] as IGeometry;
     instance?.add(geometry as IGeometry);
     instance?.render();
   }, [instance]);
@@ -256,7 +266,7 @@ const Geometry = () => {
     if (ref.current) {
       const animateGL = new AnimateGL(ref);
       setInstance(animateGL);
-      animateGL.add(geometryMap[EGeometry.Cubic] as IGeometry);
+      animateGL.add(geometryMap[EGeometry.Plane] as IGeometry);
       animateGL.render();
     }
   }, [ref]);
