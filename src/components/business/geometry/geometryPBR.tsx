@@ -10,7 +10,7 @@ enum EGeometry {
   BezierCurves,
   LineNoise,
   // SurfaceNoise,
-  Plane,
+  // Plane,
   Cubic,
   Sphere,
 }
@@ -23,7 +23,7 @@ const geometryMap = {
   [EGeometry.BezierCurves]: bezierCurve(),
   [EGeometry.LineNoise]: lineNoise(),
   // [EGeometry.SurfaceNoise]: surfaceNoise(),
-  [EGeometry.Plane]: plane(1000, 1000, [0, 0, -1000]),
+  // [EGeometry.Plane]: plane(1000, 1000, [0, 0, -1000]),
   [EGeometry.Cubic]: cubic(300, 300, 300, [0, 0, -1000]),
   [EGeometry.Sphere]: sphere([0, 0, -1000], 150),
 }

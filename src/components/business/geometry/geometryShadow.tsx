@@ -4,7 +4,9 @@ import fragment from './shader/shadow/fragment.glsl?raw';
 import { IBufferType, IGeometry, IRenderGeometry } from "./interface";
 import { useEffect, useRef } from "react";
 import { Container } from "./styled";
-import { plane, sphere } from "./algorithm";
+import { sphere, plane } from "./algorithm";
+import PerspectiveCamera from "./camera/perspectiveCamera";
+import MouseSchedule from "./utils/mouseSchedule";
 
 class AnimateGL {
   ref: React.RefObject<HTMLCanvasElement> | null = null;
@@ -21,9 +23,18 @@ class AnimateGL {
     indexBuffer: null,
   }
 
-  position: number[] = [0, 0, 500];
-  target: number[] = [0, 0, 0];
+  position = [0, 0, 500];
+  target = [0, 0, 0];
   up = [0, 1, 0];
+
+  space = {
+    near: 1,
+    far: 2000,
+  }
+
+  camera: PerspectiveCamera = new PerspectiveCamera(degToRad(60), 640 / 480, 1, 2000);
+
+  mouseSchedule: MouseSchedule | null = null;
 
   timer = 0;
 
@@ -35,13 +46,12 @@ class AnimateGL {
   init = () => {
     const { ref } = this;
     if (!ref) return;
-    const { gl } = init(ref);
+    const { gl, canvas } = init(ref);
 
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertex) as WebGLShader;
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragment) as WebGLShader;
 
     const program = createProgram(gl, vertexShader, fragmentShader) as WebGLProgram;
-    gl.useProgram(program);
 
     const positionLocation = gl.getAttribLocation(program, 'a_position');
     const normalLocation = gl.getAttribLocation(program, 'a_normals');
@@ -54,6 +64,13 @@ class AnimateGL {
     this.buffer.vertexBuffer = gl.createBuffer();
     this.buffer.normalBuffer = gl.createBuffer();
     this.buffer.indexBuffer = gl.createBuffer();
+
+    this.camera.position.set(0, 0, 500);
+    this.camera.target.set(0, 0, 0);
+    this.camera.updateViewMatrix();
+
+    this.mouseSchedule = new MouseSchedule(canvas, this.camera);
+    this.mouseSchedule.registCallback('mousemove', this.render);
   }
 
   add = (geometry: IGeometry) => {
@@ -66,12 +83,14 @@ class AnimateGL {
   }
 
   render = () => {
-    const { list, gl, program, positionLocation, normalLocation, buffer } = this;
+    const { list, gl, program, positionLocation, normalLocation, buffer, camera } = this;
     if (!gl || !program) return;
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.enable(gl.CULL_FACE);
+
+    gl.useProgram(program);
 
     const vertex = [], normals = [], indicies = [];
     for (let i = 0; i < list.length; i++) {
@@ -83,54 +102,41 @@ class AnimateGL {
 
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer.vertexBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertex), gl.STATIC_DRAW);
+
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer.normalBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer.indexBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indicies), gl.STATIC_DRAW);
 
-    const aspect = 933 / 880;
-    const zNear = 1;
-    const zFar = 2000;
-    const fieldOfViewRadians = degToRad(60);
+    let modelMatrix = m4.identify();
 
     const modelLocation = gl.getUniformLocation(program, 'u_model');
     const viewLocation = gl.getUniformLocation(program, 'u_view');
     const projectionLocation = gl.getUniformLocation(program, 'u_projection');
 
-    let modelMatrix = m4.identify();
-    modelMatrix = m4.xRotate(modelLocation, degToRad(90));
-    const cameraMatrix = m4.lookAt(this.position, this.target, this.up);
-    const viewMatrix = m4.inverse(cameraMatrix);
-    const projectionMatrix = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
+    const size = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
 
-    const renderAnimate = () => {
+    gl.enableVertexAttribArray(positionLocation);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer.vertexBuffer);
+    gl.vertexAttribPointer(positionLocation, size, type, normalize, stride, offset);
 
-      gl.uniformMatrix4fv(modelLocation, false, modelMatrix);
-      gl.uniformMatrix4fv(viewLocation, false, viewMatrix);
-      gl.uniformMatrix4fv(projectionLocation, false, projectionMatrix);
+    gl.enableVertexAttribArray(normalLocation);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer.normalBuffer);
+    gl.vertexAttribPointer(normalLocation, size, type, normalize, stride, offset);
 
-      const size = 3;
-      const type = gl.FLOAT;
-      const normalize = false;
-      const stride = 0;
-      const offset = 0;
+    console.log(camera.position);
 
-      gl.enableVertexAttribArray(normalLocation);
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer.normalBuffer);
-      gl.vertexAttribPointer(normalLocation, size, type, normalize, stride, offset);
-
-      gl.enableVertexAttribArray(positionLocation);
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer.vertexBuffer);
-      gl.vertexAttribPointer(positionLocation, size, type, normalize, stride, offset);
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer.indexBuffer);
-
-      // gl.drawElements(gl.TRIANGLES, indicies.length, gl.UNSIGNED_SHORT, 0);
-
-      gl.drawArrays(gl.TRIANGLES, offset, vertex.length);
-      // this.timer = requestAnimationFrame(renderAnimate);
-    };
-
-    renderAnimate();
+    gl.uniformMatrix4fv(modelLocation, false, modelMatrix);
+    gl.uniformMatrix4fv(viewLocation, false, camera.viewMatrix.elements);
+    gl.uniformMatrix4fv(projectionLocation, false, camera.projectionMatrix.elements);
+    
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer.indexBuffer);
+    gl.drawElements(gl.TRIANGLES, indicies.length, gl.UNSIGNED_SHORT, 0);
   }
 }
 
@@ -142,8 +148,8 @@ export default function GeometryShadow() {
   useEffect(() => {
     if (!ref.current) return;
     glRef.current = new AnimateGL(ref);
-    // const geometry = plane(100, 100, 2, 2) as IGeometry
-    const geometry = sphere([0, 0, 0], 100) as IGeometry
+    const geometry = plane(100, 100, 2, 2) as IGeometry;
+    // const geometry = sphere([0, 0, 0], 100) as IGeometry;
     glRef.current.add(geometry);
     glRef.current.render();
   }, [])

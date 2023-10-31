@@ -12,7 +12,7 @@ enum EGeometry {
   LineNoise,
   Cubic,
   Sphere,
-  Plane,
+  // Plane,
 }
 
 type TMaterialField = 'ambient' | 'diffuse' | 'specular' | 'shininess';
@@ -23,7 +23,7 @@ const geometryMap = {
   [EGeometry.LineNoise]: lineNoise(),
   [EGeometry.Cubic]: cubic(100, 100, 100, [0, 0, 0]),
   [EGeometry.Sphere]: sphere([0, 0, -100], 150),
-  [EGeometry.Plane]: plane(300, 300, 2, 2), 
+  // [EGeometry.Plane]: plane(12, 12, 2, 2), 
 }
 
 

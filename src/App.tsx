@@ -2,7 +2,7 @@ import { memo, useEffect, useState } from "react";
 import { hooksList, performanceList, BusinessList, Menu, IMenuItem } from "./components";
 
 const list = [hooksList, performanceList, BusinessList];
-const defaultKey = BusinessList.children![2].value
+const defaultKey = BusinessList.children![4].value
 
 function App() {
   const [key, setKey] = useState(defaultKey);
