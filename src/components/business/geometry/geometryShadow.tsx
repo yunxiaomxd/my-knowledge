@@ -1,12 +1,17 @@
 // import { createProgram, createShader, degToRad, init, m4 } from "./gl";
 // import vertex from './shader/shadow/vertex.glsl?raw';
 // import fragment from './shader/shadow/fragment.glsl?raw';
-import { IBufferType, IGeometry, IRenderGeometry } from "./interface";
+// import { IBufferType, IGeometry, IRenderGeometry } from "./interface";
 import { useEffect, useRef } from "react";
 import { Container } from "./styled";
+import vertex from './shader/shadow/vertex.wgsl?raw';
+import fragment from './shader/shadow/fragment.wgsl?raw';
 import { sphere, plane } from "./algorithm";
 import PerspectiveCamera from "./camera/perspectiveCamera";
 import MouseSchedule from "./utils/mouseSchedule";
+import {createShader, degToRad, writeBufferData} from "./gpu";
+import {IGeometry, IRenderGeometry} from "./interface";
+import Matrix from "./utils/matrix";
 
 // class AnimateGL {
 //   ref: React.RefObject<HTMLCanvasElement> | null = null;
@@ -144,24 +149,140 @@ import MouseSchedule from "./utils/mouseSchedule";
 
 class AnimateGPU {
   element: HTMLCanvasElement;
+  device: GPUDevice | null = null;
+  adapter: GPUAdapter | null = null;
+
+  renderPipeline: GPURenderPipeline | null = null;
+  vertexBuffer: GPUBuffer | null = null;
+  indicesBuffer: GPUBuffer | null = null;
+  matrixBuffer: GPUBuffer | null = null;
+
+  list: IRenderGeometry[] = [];
+
+  camera: PerspectiveCamera = new PerspectiveCamera(degToRad(60), 640 / 480, 1, 2000);
+
+  mouseSchedule: MouseSchedule | null = null;
 
   constructor(element: HTMLCanvasElement) {
     this.element = element;
   }
 
   async initGpu() {
-    const ctx = this.element.getContext('webgpu');
+    const ctx = this.element.getContext('webgpu')!;
     this.element.width = 640;
     this.element.height = 480;
 
     const adapter = (await navigator.gpu.requestAdapter())!;
     const device = await adapter.requestDevice();
+    const format = navigator.gpu.getPreferredCanvasFormat();
+
+    ctx.configure({
+      device,
+      format,
+      alphaMode: 'opaque',
+    });
+
+    const vertexShader = createShader(device, vertex);
+    const fragmentShader =createShader(device, fragment);
+
+    const vertexBuffer = device.createBuffer({
+      size: 0,
+      usage: GPUBufferUsage.COPY_DST,
+    });
+    const indicesBuffer = device.createBuffer(({
+      size: 0,
+      usage: GPUBufferUsage.COPY_DST,
+    }));
+    const matrixBuffer = device.createBuffer(({
+      size: 0,
+      usage: GPUBufferUsage.COPY_DST,
+    }));
+
+    this.device = device;
+    this.adapter = adapter;
+    this.vertexBuffer = vertexBuffer;
+    this.indicesBuffer = indicesBuffer;
+    this.matrixBuffer = matrixBuffer;
+    this.renderPipeline = await device.createRenderPipelineAsync({
+      layout: 'auto',
+      vertex: {
+        module: vertexShader,
+        entryPoint: 'main',
+        buffers: [
+          {
+            arrayStride: 3 * 4,
+            attributes: [
+              {
+                shaderLocation: 0,
+                offset: 0,
+                format: 'float32x3',
+              }
+            ]
+          }
+        ]
+      },
+      fragment: {
+        module: fragmentShader,
+        entryPoint: 'main',
+        targets: [{ format }],
+      },
+      primitive: {
+        topology: 'triangle-strip',
+        cullMode: 'back',
+      },
+      depthStencil: {
+        depthWriteEnabled: true,
+        depthCompare: 'less',
+        format: 'depth24plus',
+      }
+    });
+
+    this.camera.position.set(0, -100, 500);
+    this.camera.target.set(0, 0, 0);
+    this.camera.updateViewMatrix();
+
+    this.mouseSchedule = new MouseSchedule(this.element, this.camera);
+    this.mouseSchedule.registCallback('mousemove', this.render);
+  }
+
+  add = (geometry: IGeometry) => {
+    const { positions, indices, primitiveType, normals } = geometry;
+
+    this.list.push({ primitiveType, positions, indices, normals, id: Math.random().toString() });
+  }
+
+  render() {
+    const {
+      list,
+      camera,
+      device,
+      indicesBuffer,
+      vertexBuffer,
+      matrixBuffer,
+      renderPipeline,
+    } = this;
+    
+    if (!device) {
+      return;
+    }
+
+    const vertex = [], normals = [], indicies = [];
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      vertex.push(...item.positions);
+      normals.push(...item.normals);
+      indicies.push(...item.indices);
+    }
+
+    const modelMatrix = new Matrix();
+    const matrix = [...modelMatrix.elements, ...camera.viewMatrix.elements, ...camera.projectionMatrix.elements];
+    writeBufferData({ device, buffer: matrixBuffer!, offset: 0, array: new Float32Array(matrix) });
   }
 }
 
 export default function GeometryShadow() {
   const ref = useRef<HTMLCanvasElement | null>(null);
-  const gpuRef = useRef<>(null);
+  const gpuRef = useRef<AnimateGPU | null>(null);
   // const glRef = useRef<AnimateGL | null>(null);
 
   // useEffect(() => {
@@ -173,10 +294,26 @@ export default function GeometryShadow() {
   //   glRef.current.add(geometry);
   //   glRef.current.render();
   // }, [])
-  
+
+  useEffect(() => {
+      if (!ref.current) return;
+      gpuRef.current = new AnimateGPU(ref.current);
+      const geometry = plane(200, 120, 100, 60) as IGeometry;
+      // gpuRef.current.add(geometry);
+  }, []);
+
+  const handleAdd = () => {
+    if (!gpuRef.current?.device) {
+      return;
+    }
+    const geometry = plane(200, 120, 100, 60) as IGeometry;
+    gpuRef.current.add(geometry);
+    gpuRef.current.render();
+  }
 
   return (
     <Container>
+      <button onClick={handleAdd}>add</button>
       <canvas width={640} height={480} ref={ref} />
     </Container>
   )

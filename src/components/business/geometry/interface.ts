@@ -12,14 +12,14 @@ export interface IRenderGeometry {
   indices: number[];
   normals: number[];
   id: string;
-};
+}
 
 export interface IGeometry {
   positions: number[];
   indices: number[];
   normals: number[];
   primitiveType: EPrimitiveType;
-};
+}
 
 export interface IBufferType {
   vertexBuffer: WebGLBuffer | null;
